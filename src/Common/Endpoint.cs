@@ -9,6 +9,7 @@ public static class Endpoint
 
         endpoints.MapGroup("/").WithTags("Health Check").MapGet("/", () => new { success = true });
         endpoints.MapGroup("api/v1/criptos").WithTags("Criptos").MapEndpoint<CriptoController>();
+        endpoints.MapGroup("api/v1/ip").WithTags("Ip").MapEndpoint<IpController>();
     }
 
     private static IEndpointRouteBuilder MapEndpoint<TEndpoint>(this IEndpointRouteBuilder app)
