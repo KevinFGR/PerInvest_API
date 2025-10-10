@@ -1,4 +1,4 @@
-namespace PerInvest.src.Dtos;
+namespace PerInvest_API.src.Models;
 
 public class Response
 {
@@ -22,6 +22,18 @@ public class Response
         500 => TypedResults.Json(Json, statusCode: 500),
         _ => TypedResults.BadRequest(Json)
     };
+
+    public Response()
+    {
+        Data = new { };
+        Code = 200;
+    }
+
+    public Response(int code)
+    {
+        Data = new { };
+        Code = code;
+    }
 
     public Response(dynamic? data)
     {

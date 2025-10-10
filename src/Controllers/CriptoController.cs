@@ -1,8 +1,8 @@
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
-using PerInvest.src.Dtos;
+using PerInvest_API.src.Models;
 using PerInvest_Api.src.Data;
+using PerInvest_API.src.Dtos;
+using PerInvest_Api.src.Models.Criptos;
 
 namespace PerInvest_API.src.Controllers;
 
@@ -18,33 +18,32 @@ public class CriptoController :IEndpoint
     {
         try
         {
-            List<BsonDocument> result = await context.Criptos.Find(x => true).ToListAsync();
-            List<dynamic> data = result.Select(x => BsonSerializer.Deserialize<dynamic>(x)).ToList();
-
-            throw new Exception();
-
+            List<Cripto> data = await context.Criptos.Find(x => true).ToListAsync();
             return new Response(data).Result;
-            // return new { success = true, data = response };
         }
         catch (Exception ex)
         {
             return new Response($"Falha ao obter Criptos: {ex.Message}").Result;
-            // return new { success = false, message = $"Falha ao obter Criptos: {ex.Message}" };
         }
     }
 
-    public static async Task<dynamic> AddCripto(AppDbContext context, dynamic body)
+    public static async Task<dynamic> AddCripto(AppDbContext context, CreateCriptoDto body)
     {
         try
         {
-            BsonDocument cripto = BsonDocument.Parse(body.GetRawText());
+            Cripto cripto = new(){
+                Description = body.Description,
+                CreatedAt = DateTime.Now,
+                UpdatedAt = DateTime.Now
+            };
+
             await context.Criptos.InsertOneAsync(cripto);
 
-            return new { success = true };
+            return new Response(200).Result;
         }
         catch(Exception ex)
         {
-            return new { success = false, message = $"Falha ao salvar Cripto: {ex.Message}" };
+            return new Response($"Falha ao salvar Cripto: {ex.Message}").Result;
         }
     }
 }

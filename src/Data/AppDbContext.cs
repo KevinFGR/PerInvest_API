@@ -1,5 +1,6 @@
 using MongoDB.Bson;
 using MongoDB.Driver;
+using PerInvest_Api.src.Models.Criptos;
 
 namespace PerInvest_Api.src.Data;
 
@@ -32,9 +33,9 @@ public class AppDbContext
         }
     }
 
-    public IMongoCollection<BsonDocument> Criptos
+    public IMongoCollection<Cripto> Criptos
     {
-        get { return _database.GetCollection<BsonDocument>("mdt_criptos"); }
+        get { return _database.GetCollection<Cripto>("mdt_criptos"); }
     }
 
 }
