@@ -1,4 +1,4 @@
-namespace PerInvest_API.src.Dtos;
+namespace PerInvest_API.src.Dtos.Shared;
 
 public class RequestBase
 {

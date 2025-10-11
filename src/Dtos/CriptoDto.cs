@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using PerInvest_API.src.Dtos.Shared;
 
 namespace PerInvest_API.src.Dtos;
 
@@ -6,6 +7,8 @@ public class CreateCriptoDto : RequestBase
 {
     [Required(ErrorMessage = "Informe a Descrição")]
     public string Description { get; set; } = string.Empty;
+
+    public string Color { get; set; } = string.Empty;
 }
 
 public class UpdateCriptoDto : CreateCriptoDto
