@@ -1,8 +1,7 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
-using PerInvest_API.src.Models;
 
-namespace PerInvest_Api.src.Models.Transactions;
+namespace PerInvest_API.src.Models.Transactions;
 
 public class Transaction : ModelBase
 {
@@ -30,6 +29,6 @@ public class Transaction : ModelBase
     [BsonElement("tax")]
     public decimal Tax { get; set; }
 
-    [BsonElement("selled")]
-    public bool Selled { get; set; }
+    [BsonElement("sold")]
+    public bool Sold { get; set; }
 }
