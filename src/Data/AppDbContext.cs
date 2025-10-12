@@ -29,7 +29,7 @@ public class AppDbContext
         }
         catch
         {
-            throw new Exception("Failed to connect to database.");
+            throw new Exception("Falha ao conectar com banco de dados");
         }
     }
 
