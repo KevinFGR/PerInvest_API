@@ -20,7 +20,7 @@ public class ModelBase
     public string? UpdatedBy { get; set; }
 
     [BsonElement("deletedAt")]
-    public DateTime DeletedAt { get; set; }
+    public DateTime? DeletedAt { get; set; }
 
     [BsonElement("deletedBy")]
     [BsonRepresentation(BsonType.ObjectId)]
