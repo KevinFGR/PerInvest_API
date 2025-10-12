@@ -1,5 +1,3 @@
-using PerInvest_Api.src.Data;
-
 namespace PerInvest_API.src.Controllers;
 
 public class IpController :IEndpoint
@@ -9,7 +7,7 @@ public class IpController :IEndpoint
         app.MapGet("/", GetIp).Produces<dynamic>();
     }
 
-    public static async Task<dynamic> GetIp(AppDbContext context)
+    public static async Task<dynamic> GetIp()
     {
         try
         {
