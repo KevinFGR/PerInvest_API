@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using PerInvest_API.src.Dtos.Shared;
+using PerInvest_API.src.Helpers;
 
 namespace PerInvest_API.src.Dtos;
 
@@ -14,5 +15,6 @@ public class CreateCriptoDto : RequestBase
 public class UpdateCriptoDto : CreateCriptoDto
 {
     [Required(ErrorMessage = "Informe a Identidicação da Cripto")]
+    [ObjectIdValid(ErrorMessage = "Identificação da cripto inválida")]
     public string Id { get; set; } = string.Empty;
 }
