@@ -15,7 +15,7 @@ public class Response
     public IResult Result => Code switch
     {
         200 => TypedResults.Ok(Json),
-        201 => TypedResults.Created(Json),
+        201 => TypedResults.Created("", Json),
         204 => TypedResults.NoContent(),
         400 => TypedResults.BadRequest(Json),
         401 => TypedResults.Unauthorized(),
