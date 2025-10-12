@@ -1,7 +1,7 @@
 using System.Reflection;
 using MongoDB.Bson;
 
-namespace PerINvest_API.src.Helpers;
+namespace PerInvest_API.src.Helpers;
 
 public static class HelperPerInvest
 {

@@ -1,8 +1,8 @@
 using MongoDB.Driver;
-using PerInvest_Api.src.Models.Criptos;
-using PerInvest_Api.src.Models.Transactions;
+using PerInvest_API.src.Models.Criptos;
+using PerInvest_API.src.Models.Transactions;
 
-namespace PerInvest_Api.src.Data;
+namespace PerInvest_API.src.Data;
 
 public class AppDbContext
 {

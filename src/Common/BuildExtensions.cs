@@ -1,4 +1,4 @@
-using PerInvest_Api.src.Data;
+using PerInvest_API.src.Data;
 
 namespace PerInvest_API.src.Common;
 
