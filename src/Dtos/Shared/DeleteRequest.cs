@@ -1,9 +1,13 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace PerInvest_API.src.Dtos.Shared;
 
 public class DeleteRequest : RequestBase
 {
-    [Required(ErrorMessage = "Informe a identificação do registro")]
-    public string? Id { get; set; }
+    public string Id { get; set; } = string.Empty;
+
+    public DeleteRequest() { } 
+    public DeleteRequest(HttpContext httpContext, string id) 
+    {
+        Id = id;
+    }    
+
 }
