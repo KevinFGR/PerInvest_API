@@ -1,11 +1,13 @@
 using MongoDB.Driver;
 using PerInvest_API.src.Models;
-using PerInvest_Api.src.Data;
+using PerInvest_API.src.Data;
 using PerInvest_API.src.Dtos;
-using PerInvest_Api.src.Models.Criptos;
+using PerInvest_API.src.Models.Criptos;
 using System.Linq.Expressions;
 using PerInvest_API.src.Dtos.Shared;
-using PerINvest_API.src.Helpers;
+using PerInvest_API.src.Helpers;
+using PerInvest_API.src.Common;
+using MongoDB.Driver.Linq;
 
 namespace PerInvest_API.src.Controllers;
 
@@ -14,8 +16,8 @@ public class CriptoController :IEndpoint
     public static void Map(IEndpointRouteBuilder app)
     {
         app.MapGet("/", Get);
-        app.MapPost("/", Add);
-        app.MapPut("/", Update);
+        app.MapPost("/", Add).WithDataAnnotation<CreateCriptoDto>();
+        app.MapPut("/", Update).WithDataAnnotation<UpdateCriptoDto>();
         app.MapDelete("/{id}", Delete);
     }
 
@@ -36,7 +38,6 @@ public class CriptoController :IEndpoint
     {
         try
         {
-
             Cripto cripto = request.MapV2<Cripto>();
             cripto.CreatedAt = DateTime.Now;
             cripto.UpdatedAt = DateTime.Now;
@@ -57,7 +58,9 @@ public class CriptoController :IEndpoint
     {
         try
         {
-            Cripto cripto = await context.Criptos.Find(x => x.Id == request.Id && !x.Deleted).FirstOrDefaultAsync();
+            Cripto? cripto = await context.Criptos.Find(x => x.Id == request.Id && !x.Deleted).FirstOrDefaultAsync();
+            if(cripto is null) return new Response("Cripto não encontrada").Result;
+            
             cripto.Description = request.Description;
             cripto.Color = request.Color;
             cripto.UpdatedBy = request.UserId;
@@ -78,6 +81,9 @@ public class CriptoController :IEndpoint
     {
         try
         {
+            bool hasTransactions = await context.Transactions.AsQueryable().AnyAsync(x => !x.Deleted && x.IdCripto == id);
+            if(hasTransactions) return new Response("Impossível excluir cripto, há movimentações cadastradas com esta moeda").Result;
+
             DeleteRequest request = new (httpContext, id);
             Expression<Func<Cripto, bool>> filter = x => x.Id == id;
             var update = Builders<Cripto>.Update
