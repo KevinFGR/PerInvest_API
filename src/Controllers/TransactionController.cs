@@ -79,7 +79,8 @@ public class TransactionController :IEndpoint
             transaction.UpdatedAt = DateTime.Now;
             transaction.UpdatedBy = request.UserId;
 
-            await context.Transactions.InsertOneAsync(transaction);
+            Expression<Func<Transaction, bool>> filter = x => x.Id == request.Id && !x.Deleted;
+            await context.Transactions.ReplaceOneAsync(filter, transaction);
 
             return new Response(200).Result;
         }
