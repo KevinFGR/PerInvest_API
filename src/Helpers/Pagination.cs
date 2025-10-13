@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -77,29 +78,34 @@ public class Pagination<TModel>
     }
 
 
-    private object? ConvertValue(string value, Type targetType)
+    private static object? ConvertValue(string value, Type targetType)
     {
         try
         {
             if (targetType == typeof(string)) return value;
 
             if (targetType == typeof(int) || targetType == typeof(int?))
-                return int.TryParse(value, out var i) ? i : null;
+                return int.TryParse(value, out var intValue) ? intValue : null;
 
             if (targetType == typeof(decimal) || targetType == typeof(decimal?))
-                return decimal.TryParse(value, out var d) ? d : null;
+                return decimal.TryParse(value, out var decimalValue) ? decimalValue : null;
 
             if (targetType == typeof(double) || targetType == typeof(double?))
-                return double.TryParse(value, out var d) ? d : null;
+                return double.TryParse(value, out var doubleValue) ? doubleValue : null;
 
             if (targetType == typeof(DateTime) || targetType == typeof(DateTime?))
-                return DateTime.TryParse(value, out var dt) ? dt : null;
+                {
+                    string[] formatos = ["yyyy-MM-dd", "yyyy-MM-ddTHH:mm:ss.fffZ"];
+                    if (DateTime.TryParseExact(value, formatos, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var dateValue))
+                        return dateValue;
+                    return null;
+                }
 
             if (targetType == typeof(bool) || targetType == typeof(bool?))
-                return bool.TryParse(value, out var b) ? b : null;
+                return bool.TryParse(value, out var booleanValue) ? booleanValue : null;
 
             if (targetType.IsEnum)
-                return Enum.TryParse(targetType, value, true, out var e) ? e : null;
+                return Enum.TryParse(targetType, value, true, out var enumValue) ? enumValue : null;
 
             return Convert.ChangeType(value, targetType);
         }
