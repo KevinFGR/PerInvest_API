@@ -24,7 +24,7 @@ public class AppDbContext
                 };
             }
 
-            var mongoClient = new MongoClient(mongoClientSettings);
+            MongoClient mongoClient = new (mongoClientSettings);
             _database = mongoClient.GetDatabase(DatabaseName);
         }
         catch
@@ -35,12 +35,11 @@ public class AppDbContext
 
     public IMongoCollection<Cripto> Criptos
     {
-        get { return _database.GetCollection<Cripto>("mdt_criptos"); }
+        get { return _database.GetCollection<Cripto>("criptos"); }
     }
 
     public IMongoCollection<Transaction> Transactions
     {
-        get { return _database.GetCollection<Transaction>("mdt_transactions"); }
+        get { return _database.GetCollection<Transaction>("transactions"); }
     }
-
 }
