@@ -21,11 +21,18 @@ public class TransactionController :IEndpoint
         app.MapDelete("/{id}", Delete);
     }
 
-    public static async Task<IResult> Get(AppDbContext context)
+    public static async Task<IResult> Get(AppDbContext context, HttpContext httpContext)
     {
         try
         {
-            List<Transaction> data = await context.Transactions.Find(x => !x.Deleted).ToListAsync();
+            Pagination<Transaction> pagination = new(httpContext);
+
+            List<Transaction> data = await context.Transactions
+                .Find(pagination.Filter)
+                .Sort(pagination.Sort)
+                .Skip(pagination.Skip)
+                .Limit(pagination.Limit)
+                .ToListAsync();
             return new Response(data).Result;
         }
         catch (Exception ex)
@@ -88,7 +95,7 @@ public class TransactionController :IEndpoint
         {
             DeleteRequest request = new (httpContext, id);
             Expression<Func<Transaction, bool>> filter = x => x.Id == id;
-            var update = Builders<Transaction>.Update
+            UpdateDefinition<Transaction> update = Builders<Transaction>.Update
                 .Set(x => x.Deleted, true)
                 .Set(x => x.DeletedAt, DateTime.Now)
                 .Set(x => x.DeletedBy, request.UserId);

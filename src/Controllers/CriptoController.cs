@@ -21,11 +21,17 @@ public class CriptoController :IEndpoint
         app.MapDelete("/{id}", Delete);
     }
 
-    public static async Task<IResult> Get(AppDbContext context)
+    public static async Task<IResult> Get(AppDbContext context, HttpContext httpContext)
     {
         try
         {
-            List<Cripto> data = await context.Criptos.Find(x => !x.Deleted).ToListAsync();
+            Pagination<Cripto> pagination = new(httpContext);
+            List<Cripto> data = await context.Criptos
+                .Find(pagination.Filter)
+                .Sort(pagination.Sort)
+                .Skip(pagination.Skip)
+                .Limit(pagination.Limit)
+                .ToListAsync();
             return new Response(data).Result;
         }
         catch (Exception ex)

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 using MongoDB.Bson;
 
@@ -106,5 +107,13 @@ public static class HelperPerInvest
     public static bool IsTypeOrNullableOf<TData>(Type type)
     {
         return (Nullable.GetUnderlyingType(type) ?? type) == typeof(TData);
+    }
+
+    public static string FirstCharToUpper(this string input, CultureInfo? culture = null)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return input;
+
+        culture ??= CultureInfo.CurrentCulture;
+        return char.ToUpper(input[0], culture) + input.Substring(1);
     }
 }
