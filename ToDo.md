@@ -1,0 +1,1 @@
+- Arrumar data na produção (servidor americano reconhece outro padrão)
