@@ -47,24 +47,32 @@ public class Pagination<TModel>
                 filters.Add(builder.Eq(key, BsonNull.Value));
                 continue;
             }
-            if (string.IsNullOrWhiteSpace(value)) continue;
+            // if (string.IsNullOrWhiteSpace(value)) continue;
 
             PropertyInfo? propInfo = typeof(TModel).GetProperty(key, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
-            if (propInfo == null) continue;
-            
-            object? convertedValue = ConvertValue(value, propInfo.PropertyType);
-            if (convertedValue != null) filters.Add(builder.Eq(key, convertedValue));
+            if(propInfo is null)
+            {
+                filters.Add(builder.Eq(key, value));
+                continue;
+            }
 
-            // if(DateTime.TryParse(value, out DateTime dateValue)) value = dateValue;
-            // if(int.TryParse(value, out int intValue)) value = intValue;
-            // if(decimal.TryParse(value, out decimal decimalValue)) value = decimalValue;
-            // filters.Add(builder.Eq(key, value));
+            object? convertedValue = ConvertValue(value, propInfo.PropertyType);
+
+            if(propInfo.PropertyType == typeof(DateTime) || propInfo.PropertyType == typeof(DateTime?))
+            {
+                filters.Add(builder.Gte(key, (convertedValue as DateTime[])![0]));
+                filters.Add(builder.Lt(key, (convertedValue as DateTime[])![1]));
+            }
+            else
+            {
+                filters.Add(builder.Eq(key, convertedValue));
+            }
         }
 
         return filters.Count > 0 ? builder.And(filters) : builder.Empty;
     }
 
-    private SortDefinition<TModel>? BuildSort(IQueryCollection query)
+    private static SortDefinition<TModel>? BuildSort(IQueryCollection query)
     {
         SortDefinitionBuilder<TModel> builder = Builders<TModel>.Sort;
         string? sortField = query.ContainsKey("sort") ? query["sort"].ToString() : null;
@@ -94,12 +102,13 @@ public class Pagination<TModel>
                 return double.TryParse(value, out var doubleValue) ? doubleValue : null;
 
             if (targetType == typeof(DateTime) || targetType == typeof(DateTime?))
-                {
-                    string[] formatos = ["yyyy-MM-dd", "yyyy-MM-ddTHH:mm:ss.fffZ"];
-                    if (DateTime.TryParseExact(value, formatos, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var dateValue))
-                        return dateValue;
-                    return null;
-                }
+            {
+                string[] formatos = ["yyyy-MM-dd", "yyyy-MM-ddTHH:mm:ss.fffZ"];
+                if (DateTime.TryParseExact(value, formatos, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var dateValue))
+                    // return dateValue.Date.AddDays(-1);
+                    return new DateTime[]{ dateValue.Date.AddDays(1), dateValue.Date.AddDays(2)};
+                return null;
+            }
 
             if (targetType == typeof(bool) || targetType == typeof(bool?))
                 return bool.TryParse(value, out var booleanValue) ? booleanValue : null;
