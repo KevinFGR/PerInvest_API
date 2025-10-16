@@ -44,7 +44,7 @@ public class CriptoController :IEndpoint
     {
         try
         {
-            Cripto cripto = request.MapV2<Cripto>();
+            Cripto cripto = request.Map<Cripto>();
             cripto.CreatedAt = DateTime.Now;
             cripto.UpdatedAt = DateTime.Now;
             cripto.CreatedBy = request.UserId;

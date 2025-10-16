@@ -1,60 +1,13 @@
 using System.Globalization;
 using System.Reflection;
 using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
 
 namespace PerInvest_API.src.Helpers;
 
 public static class HelperPerInvest
 {
-    public static TModel Map<TRequest, TModel>(TRequest request) where TModel : new()
-    {
-        if (request == null) return new();
-
-        Type requestType = typeof(TRequest);
-        Type modelType = typeof(TModel);
-        TModel modelInstance = new();
-
-        PropertyInfo[] requestProperties = requestType.GetProperties();
-        PropertyInfo[] modelProperties = modelType.GetProperties();
-
-        foreach (PropertyInfo modelProp in modelProperties)
-        {
-            PropertyInfo? requestProp = requestProperties.FirstOrDefault(
-                request => request.Name == modelProp.Name && request.CanRead && modelProp.CanWrite
-            );
-            if (requestProp != null)
-            {
-                Type propModelType = modelProp.PropertyType;
-                Type propRequestType = requestProp.PropertyType;
-                var value = requestProp.GetValue(request);
-
-                if((propModelType == propRequestType ||
-                    Nullable.GetUnderlyingType(propModelType) == propRequestType ||
-                    propModelType == Nullable.GetUnderlyingType(propRequestType)
-                ) && value is not null)
-                {
-                    modelProp.SetValue(modelInstance, value);
-                }
-                else if (IsTypeOrNullableOf<string>(propRequestType) && IsTypeOrNullableOf<ObjectId>(propModelType) && value is not null)
-                {
-                    modelProp.SetValue(modelInstance, new ObjectId(value.ToString()));
-                }
-                else if (IsTypeOrNullableOf<string>(propRequestType) && IsTypeOrNullableOf<DateTime>(propModelType) && value is not null)
-                {
-                    modelProp.SetValue(modelInstance, DateTime.Parse(value!.ToString()!));
-                }
-                // else if (IsTypeOrNullableOf<JsonElement>(propRequestType) && IsTypeOrNullableOf<BsonDocument>(propModelType))
-                // {
-                //     JsonElement? jsonValue = requestProp.GetValue(request) as JsonElement?;
-                //     BsonDocument bsonValue = NormalizeObject(jsonValue);
-                //     modelProp.SetValue(modelInstance, bsonValue);
-                // }
-            }
-        }
-        return modelInstance;
-    }
-
-    public static TModel MapV2<TModel>(this object request) where TModel : new()
+    public static TModel Map<TModel>(this object request) where TModel : new()
     {
         if (request == null) return new();
 
@@ -115,5 +68,15 @@ public static class HelperPerInvest
 
         culture ??= CultureInfo.CurrentCulture;
         return char.ToUpper(input[0], culture) + input.Substring(1);
+    }
+
+    public static dynamic ToDynamic(this BsonDocument document)
+    {
+        return BsonSerializer.Deserialize<dynamic>(document);
+    }
+
+    public static List<dynamic> ToDynamic(this List<BsonDocument> documents)
+    {
+        return documents.Select(x => x.ToDynamic()).ToList();
     }
 }
