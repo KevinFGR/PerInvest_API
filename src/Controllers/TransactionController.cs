@@ -32,17 +32,17 @@ public class TransactionController :IEndpoint
                 pagination.Match,
 
                 new("$lookup", new BsonDocument{
-                    {"from", "criptos"},
-                    {"let", new BsonDocument("idCripto", "$idCripto")},
+                    {"from", "cryptos"},
+                    {"let", new BsonDocument("idCrypto", "$idCrypto")},
                     {"pipeline", new BsonArray{
-                        new BsonDocument("$match", new BsonDocument("$expr", new BsonDocument("$eq", new BsonArray{"$_id", "$$idCripto"})))
+                        new BsonDocument("$match", new BsonDocument("$expr", new BsonDocument("$eq", new BsonArray{"$_id", "$$idCrypto"})))
                     }},
                     {"as", "descriptionCrypto"}
                 }),
 
                 new ("$addFields", new BsonDocument{
                     {"id", new BsonDocument("$toString", "$_id")},
-                    {"idCripto", new BsonDocument("$toString", "$idCripto")},
+                    {"idCrypto", new BsonDocument("$toString", "$idCrypto")},
                     {"descriptionCrypto", new BsonDocument("$first", "$descriptionCrypto.description")}
                 }),
 
@@ -55,7 +55,7 @@ public class TransactionController :IEndpoint
         }
         catch (Exception ex)
         {
-            return new Response($"Falha ao obter movimentações: {ex.Message}").Result;
+            return new Response(500, $"Falha ao obter movimentações: {ex.Message}").Result;
         }
     }
 
@@ -76,7 +76,7 @@ public class TransactionController :IEndpoint
         }
         catch(Exception ex)
         {
-            return new Response($"Falha ao salvar movimentação: {ex.Message}").Result;
+            return new Response(500, $"Falha ao salvar movimentação: {ex.Message}").Result;
         }
     }
 
@@ -85,10 +85,10 @@ public class TransactionController :IEndpoint
         try
         {
             Transaction? dbTransaction = await context.Transactions.Find(x => x.Id == request.Id && !x.Deleted).FirstOrDefaultAsync();
-            if(dbTransaction is null) return new Response("Movimentação não encontrada").Result;
+            if(dbTransaction is null) return new Response(400, "Movimentação não encontrada").Result;
 
-            bool criptoExists = await context.Criptos.AsQueryable().AnyAsync(x => x.Id == request.IdCripto && !x.Deleted);
-            if(!criptoExists) return new Response("Cripto não encontrada").Result;
+            bool cryptoExists = await context.Cryptos.AsQueryable().AnyAsync(x => x.Id == request.IdCrypto && !x.Deleted);
+            if(!cryptoExists) return new Response(400, "Crypto não encontrada").Result;
 
             Transaction transaction = request.Map<Transaction>();
             if(transaction.Type == "sale") transaction.Sold = true;
@@ -104,7 +104,7 @@ public class TransactionController :IEndpoint
         }
         catch(Exception ex)
         {
-            return new Response($"Falha ao salvar movimentação: {ex.Message}").Result;
+            return new Response(500, $"Falha ao salvar movimentação: {ex.Message}").Result;
         }
     }
 
@@ -124,7 +124,7 @@ public class TransactionController :IEndpoint
         }
         catch(Exception ex)
         {
-            return new Response($"Falha ao salvar movimentação: {ex.Message}").Result;
+            return new Response(500, $"Falha ao salvar movimentação: {ex.Message}").Result;
         }
     }
 }

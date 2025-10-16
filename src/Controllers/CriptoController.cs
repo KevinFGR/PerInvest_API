@@ -2,7 +2,7 @@ using MongoDB.Driver;
 using PerInvest_API.src.Models;
 using PerInvest_API.src.Data;
 using PerInvest_API.src.Dtos;
-using PerInvest_API.src.Models.Criptos;
+using PerInvest_API.src.Models.Cryptos;
 using System.Linq.Expressions;
 using PerInvest_API.src.Dtos.Shared;
 using PerInvest_API.src.Helpers;
@@ -11,13 +11,13 @@ using MongoDB.Driver.Linq;
 
 namespace PerInvest_API.src.Controllers;
 
-public class CriptoController :IEndpoint
+public class CryptoController :IEndpoint
 {
     public static void Map(IEndpointRouteBuilder app)
     {
         app.MapGet("/", Get);
-        app.MapPost("/", Add).WithDataAnnotation<CreateCriptoDto>();
-        app.MapPut("/", Update).WithDataAnnotation<UpdateCriptoDto>();
+        app.MapPost("/", Add).WithDataAnnotation<CreateCryptoDto>();
+        app.MapPut("/", Update).WithDataAnnotation<UpdateCryptoDto>();
         app.MapDelete("/{id}", Delete);
     }
 
@@ -25,8 +25,8 @@ public class CriptoController :IEndpoint
     {
         try
         {
-            Pagination<Cripto> pagination = new(httpContext);
-            List<Cripto> data = await context.Criptos
+            Pagination<Crypto> pagination = new(httpContext);
+            List<Crypto> data = await context.Cryptos
                 .Find(pagination.Filter)
                 .Sort(pagination.Sort)
                 .Skip(pagination.Skip)
@@ -36,50 +36,50 @@ public class CriptoController :IEndpoint
         }
         catch (Exception ex)
         {
-            return new Response($"Falha ao obter Criptos: {ex.Message}").Result;
+            return new Response($"Falha ao obter Cryptos: {ex.Message}").Result;
         }
     }
 
-    public static async Task<IResult> Add(AppDbContext context, CreateCriptoDto request)
+    public static async Task<IResult> Add(AppDbContext context, CreateCryptoDto request)
     {
         try
         {
-            Cripto cripto = request.Map<Cripto>();
-            cripto.CreatedAt = DateTime.Now;
-            cripto.UpdatedAt = DateTime.Now;
-            cripto.CreatedBy = request.UserId;
-            cripto.UpdatedBy = request.UserId;
+            Crypto crypto = request.Map<Crypto>();
+            crypto.CreatedAt = DateTime.Now;
+            crypto.UpdatedAt = DateTime.Now;
+            crypto.CreatedBy = request.UserId;
+            crypto.UpdatedBy = request.UserId;
 
-            await context.Criptos.InsertOneAsync(cripto);
+            await context.Cryptos.InsertOneAsync(crypto);
 
-            return new Response(201, "Cripto criada com sucesso").Result;
+            return new Response(201, "Crypto criada com sucesso").Result;
         }
         catch(Exception ex)
         {
-            return new Response($"Falha ao salvar Cripto: {ex.Message}").Result;
+            return new Response($"Falha ao salvar Crypto: {ex.Message}").Result;
         }
     }
 
-    public static async Task<IResult> Update(AppDbContext context, UpdateCriptoDto request)
+    public static async Task<IResult> Update(AppDbContext context, UpdateCryptoDto request)
     {
         try
         {
-            Cripto? cripto = await context.Criptos.Find(x => x.Id == request.Id && !x.Deleted).FirstOrDefaultAsync();
-            if(cripto is null) return new Response("Cripto não encontrada").Result;
+            Crypto? crypto = await context.Cryptos.Find(x => x.Id == request.Id && !x.Deleted).FirstOrDefaultAsync();
+            if(crypto is null) return new Response("Crypto não encontrada").Result;
             
-            cripto.Description = request.Description;
-            cripto.Color = request.Color;
-            cripto.UpdatedBy = request.UserId;
-            cripto.UpdatedAt = DateTime.Now;
+            crypto.Description = request.Description;
+            crypto.Color = request.Color;
+            crypto.UpdatedBy = request.UserId;
+            crypto.UpdatedAt = DateTime.Now;
 
-            Expression<Func<Cripto, bool>> filter = x => x.Id == request.Id && !x.Deleted;
-            await context.Criptos.ReplaceOneAsync(filter, cripto);
+            Expression<Func<Crypto, bool>> filter = x => x.Id == request.Id && !x.Deleted;
+            await context.Cryptos.ReplaceOneAsync(filter, crypto);
 
-            return new Response(200, "Cripto Atualizada com sucesso").Result;
+            return new Response(200, "Crypto Atualizada com sucesso").Result;
         }
         catch(Exception ex)
         {
-            return new Response($"Falha ao salvar Cripto: {ex.Message}").Result;
+            return new Response($"Falha ao salvar Crypto: {ex.Message}").Result;
         }
     }
 
@@ -87,22 +87,22 @@ public class CriptoController :IEndpoint
     {
         try
         {
-            bool hasTransactions = await context.Transactions.AsQueryable().AnyAsync(x => !x.Deleted && x.IdCripto == id);
-            if(hasTransactions) return new Response("Impossível excluir cripto, há movimentações cadastradas com esta moeda").Result;
+            bool hasTransactions = await context.Transactions.AsQueryable().AnyAsync(x => !x.Deleted && x.IdCrypto == id);
+            if(hasTransactions) return new Response("Impossível excluir crypto, há movimentações cadastradas com esta moeda").Result;
 
             DeleteRequest request = new (httpContext, id);
-            Expression<Func<Cripto, bool>> filter = x => x.Id == id;
-            var update = Builders<Cripto>.Update
+            Expression<Func<Crypto, bool>> filter = x => x.Id == id;
+            var update = Builders<Crypto>.Update
                 .Set(x => x.Deleted, true)
                 .Set(x => x.DeletedAt, DateTime.Now)
                 .Set(x => x.DeletedBy, request.UserId);
-            await context.Criptos.UpdateOneAsync(filter, update);
+            await context.Cryptos.UpdateOneAsync(filter, update);
 
-            return new Response(200, "Cripto Excluida com sucesso").Result;
+            return new Response(200, "Crypto Excluida com sucesso").Result;
         }
         catch(Exception ex)
         {
-            return new Response($"Falha ao salvar Cripto: {ex.Message}").Result;
+            return new Response($"Falha ao salvar Crypto: {ex.Message}").Result;
         }
     }
 }

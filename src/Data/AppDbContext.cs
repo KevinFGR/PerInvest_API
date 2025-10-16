@@ -1,5 +1,5 @@
 using MongoDB.Driver;
-using PerInvest_API.src.Models.Criptos;
+using PerInvest_API.src.Models.Cryptos;
 using PerInvest_API.src.Models.Transactions;
 
 namespace PerInvest_API.src.Data;
@@ -33,9 +33,9 @@ public class AppDbContext
         }
     }
 
-    public IMongoCollection<Cripto> Criptos
+    public IMongoCollection<Crypto> Cryptos
     {
-        get { return _database.GetCollection<Cripto>("criptos"); }
+        get { return _database.GetCollection<Crypto>("cryptos"); }
     }
 
     public IMongoCollection<Transaction> Transactions

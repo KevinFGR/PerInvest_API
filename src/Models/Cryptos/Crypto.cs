@@ -1,10 +1,9 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
-using PerInvest_API.src.Models;
 
-namespace PerInvest_API.src.Models.Criptos;
+namespace PerInvest_API.src.Models.Cryptos;
 
-public class Cripto : ModelBase
+public class Crypto : ModelBase
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]

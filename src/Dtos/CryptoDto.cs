@@ -4,7 +4,7 @@ using PerInvest_API.src.Helpers;
 
 namespace PerInvest_API.src.Dtos;
 
-public class CreateCriptoDto : RequestBase
+public class CreateCryptoDto : RequestBase
 {
     [Required(ErrorMessage = "Informe a Descrição")]
     public string Description { get; set; } = string.Empty;
@@ -12,9 +12,9 @@ public class CreateCriptoDto : RequestBase
     public string Color { get; set; } = string.Empty;
 }
 
-public class UpdateCriptoDto : CreateCriptoDto
+public class UpdateCryptoDto : CreateCryptoDto
 {
-    [Required(ErrorMessage = "Informe a Identidicação da Cripto")]
-    [ObjectIdValid(ErrorMessage = "Identificação da cripto inválida")]
+    [Required(ErrorMessage = "Informe a Identidicação da Crypto")]
+    [ObjectIdValid(ErrorMessage = "Identificação da crypto inválida")]
     public string Id { get; set; } = string.Empty;
 }

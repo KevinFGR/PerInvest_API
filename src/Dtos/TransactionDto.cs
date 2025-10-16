@@ -15,7 +15,7 @@ public class CreateTransactionDto : RequestBase
 
     [Required(ErrorMessage = "Informe a moeda")]
     [ObjectIdValid(ErrorMessage = "Identificação da moeda inválida")]
-    public string IdCripto { get; set; } = string.Empty;
+    public string IdCrypto { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Informe o valor")]
     public double? Value { get; set; }

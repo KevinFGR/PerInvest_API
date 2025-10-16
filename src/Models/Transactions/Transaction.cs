@@ -16,9 +16,9 @@ public class Transaction : ModelBase
     [BsonElement("type")]
     public string Type { get; set; } = string.Empty;
 
-    [BsonElement("idCripto")]
+    [BsonElement("idCrypto")]
     [BsonRepresentation(BsonType.ObjectId)]
-    public string IdCripto { get; set; } = string.Empty;
+    public string IdCrypto { get; set; } = string.Empty;
 
     [BsonElement("value")]
     public double Value { get; set; }
