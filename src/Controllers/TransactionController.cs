@@ -8,6 +8,7 @@ using MongoDB.Driver.Linq;
 using PerInvest_API.src.Common;
 using PerInvest_API.src.Dtos.Shared;
 using System.Linq.Expressions;
+using MongoDB.Bson;
 
 namespace PerInvest_API.src.Controllers;
 
@@ -27,13 +28,30 @@ public class TransactionController :IEndpoint
         {
             Pagination<Transaction> pagination = new(httpContext);
 
-            List<Transaction> data = await context.Transactions
-                .Find(pagination.Filter)
-                .Sort(pagination.Sort)
-                .Skip(pagination.Skip)
-                .Limit(pagination.Limit)
-                .ToListAsync();
-            return new Response(data).Result;
+            BsonDocument[] pipeline = [
+                pagination.Match,
+
+                new("$lookup", new BsonDocument{
+                    {"from", "criptos"},
+                    {"let", new BsonDocument("idCripto", "$idCripto")},
+                    {"pipeline", new BsonArray{
+                        new BsonDocument("$match", new BsonDocument("$expr", new BsonDocument("$eq", new BsonArray{"$_id", "$$idCripto"})))
+                    }},
+                    {"as", "descriptionCrypto"}
+                }),
+
+                new ("$addFields", new BsonDocument{
+                    {"id", new BsonDocument("$toString", "$_id")},
+                    {"idCripto", new BsonDocument("$toString", "$idCripto")},
+                    {"descriptionCrypto", new BsonDocument("$first", "$descriptionCrypto.description")}
+                }),
+
+                new ("$project", new BsonDocument("_id", 0))
+            ];
+
+            List<BsonDocument> bsonData = await context.Transactions.Aggregate<BsonDocument>(pipeline).ToListAsync();
+
+            return new Response(bsonData.ToDynamic()).Result;
         }
         catch (Exception ex)
         {
@@ -45,7 +63,7 @@ public class TransactionController :IEndpoint
     {
         try
         {
-            Transaction transaction = request.MapV2<Transaction>();
+            Transaction transaction = request.Map<Transaction>();
             if(transaction.Type == "sale") transaction.Sold = true;
             transaction.CreatedAt = DateTime.Now;
             transaction.UpdatedAt = DateTime.Now;
@@ -72,7 +90,7 @@ public class TransactionController :IEndpoint
             bool criptoExists = await context.Criptos.AsQueryable().AnyAsync(x => x.Id == request.IdCripto && !x.Deleted);
             if(!criptoExists) return new Response("Cripto não encontrada").Result;
 
-            Transaction transaction = request.MapV2<Transaction>();
+            Transaction transaction = request.Map<Transaction>();
             if(transaction.Type == "sale") transaction.Sold = true;
             transaction.CreatedAt = dbTransaction.CreatedAt;
             transaction.CreatedBy = dbTransaction.CreatedBy;

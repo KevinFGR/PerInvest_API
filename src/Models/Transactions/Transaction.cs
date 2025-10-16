@@ -21,13 +21,13 @@ public class Transaction : ModelBase
     public string IdCripto { get; set; } = string.Empty;
 
     [BsonElement("value")]
-    public decimal Value { get; set; }
+    public double Value { get; set; }
 
     [BsonElement("quotation")]
-    public decimal Quotation { get; set; }
+    public double Quotation { get; set; }
 
     [BsonElement("tax")]
-    public decimal Tax { get; set; }
+    public double Tax { get; set; }
 
     [BsonElement("sold")]
     public bool Sold { get; set; }

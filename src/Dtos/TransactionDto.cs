@@ -18,12 +18,12 @@ public class CreateTransactionDto : RequestBase
     public string IdCripto { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Informe o valor")]
-    public decimal? Value { get; set; }
+    public double? Value { get; set; }
 
     [Required(ErrorMessage = "Informe a cotação da moeda")]
-    public decimal? Quotation { get; set; }
+    public double? Quotation { get; set; }
 
-    public decimal Tax { get; set; }
+    public double Tax { get; set; }
 
     [Required(ErrorMessage = "Informe se é uma compra ou venda")]
     public bool? Sold { get; set; }
