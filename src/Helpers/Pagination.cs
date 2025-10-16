@@ -14,6 +14,8 @@ public class Pagination<TModel>
 
     public FilterDefinition<TModel> Filter { get; private set; }
 
+    public BsonDocument Match { get; private set; } = new("$match", new BsonDocument("$and", new BsonArray()));
+
     public SortDefinition<TModel>? Sort { get; private set; }
 
     public int Skip => (Page - 1) * PageSize;
@@ -37,22 +39,26 @@ public class Pagination<TModel>
 
         foreach (var property in query)
         {
-            string key = property.Key.ToLower().FirstCharToUpper();
+            string linqKey = property.Key.FirstCharToUpper();
+            string key = property.Key;
             dynamic value = property.Value.ToString();
 
-            if (key.ToLower() is "page" or "pagesize" or "sort" or "order") continue;
+            if (key.ToLower() is "page" or "pagesize" or "sort" or "order") 
+                continue;
 
             if (value.Equals("null", StringComparison.OrdinalIgnoreCase))
             {
-                filters.Add(builder.Eq(key, BsonNull.Value));
+                filters.Add(builder.Eq(linqKey, BsonNull.Value));
+                Match["$match"].AsBsonDocument.Add(key, BsonNull.Value);
                 continue;
             }
             // if (string.IsNullOrWhiteSpace(value)) continue;
 
-            PropertyInfo? propInfo = typeof(TModel).GetProperty(key, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
+            PropertyInfo? propInfo = typeof(TModel).GetProperty(linqKey, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
             if(propInfo is null)
             {
-                filters.Add(builder.Eq(key, value));
+                filters.Add(builder.Eq(linqKey, value));
+                Match["$match"].AsBsonDocument.Add(key, value);
                 continue;
             }
 
@@ -60,14 +66,25 @@ public class Pagination<TModel>
 
             if(propInfo.PropertyType == typeof(DateTime) || propInfo.PropertyType == typeof(DateTime?))
             {
-                filters.Add(builder.Gte(key, (convertedValue as DateTime[])![0]));
-                filters.Add(builder.Lt(key, (convertedValue as DateTime[])![1]));
+                filters.Add(builder.Gte(linqKey, (convertedValue as DateTime[])![0]));
+                filters.Add(builder.Lt(linqKey, (convertedValue as DateTime[])![1]));
+
+                Match["$match"]["$and"].AsBsonArray.Add( new BsonDocument( 
+                    $"{key}", new BsonDocument("$gte" , (convertedValue as DateTime[])![0]) 
+                ));
+                Match["$match"]["$and"].AsBsonArray.Add( new BsonDocument( 
+                    $"{key}" , new BsonDocument("$lt", (convertedValue as DateTime[])![1])
+                ));
             }
             else
             {
-                filters.Add(builder.Eq(key, convertedValue));
+                filters.Add(builder.Eq(linqKey, convertedValue));
+                Match["$match"].AsBsonDocument.Add(key, BsonValue.Create(convertedValue));
             }
         }
+
+        if(Match["$match"]["$and"].AsBsonArray.Count == 0) 
+            Match["$match"].AsBsonDocument.Remove("$and");
 
         return filters.Count > 0 ? builder.And(filters) : builder.Empty;
     }
@@ -84,7 +101,6 @@ public class Pagination<TModel>
             ? builder.Descending(sortField.FirstCharToUpper())
             : builder.Ascending(sortField.FirstCharToUpper());
     }
-
 
     private static object? ConvertValue(string value, Type targetType)
     {
