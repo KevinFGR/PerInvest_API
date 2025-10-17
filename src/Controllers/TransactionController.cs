@@ -32,7 +32,7 @@ public class TransactionController :IEndpoint
                 pagination.BsonFilter,
                 pagination.BsonSort,
                 pagination.BsonSkip,
-                pagination.BsonLimit,
+                pagination.BsonLimit, 
                 new("$lookup", new BsonDocument{
                     {"from", "cryptos"},
                     {"let", new BsonDocument("idCrypto", "$idCrypto")},
@@ -110,7 +110,7 @@ public class TransactionController :IEndpoint
         }
         catch(Exception ex)
         {
-            return new Response(500, $"Falha ao salvar movimentação: {ex.Message}").Result;
+            return new Response(500, $"Falha ao atualizar movimentação: {ex.Message}").Result;
         }
     }
 
@@ -130,7 +130,7 @@ public class TransactionController :IEndpoint
         }
         catch(Exception ex)
         {
-            return new Response(500, $"Falha ao salvar movimentação: {ex.Message}").Result;
+            return new Response(500, $"Falha ao excluir movimentação: {ex.Message}").Result;
         }
     }
 }
