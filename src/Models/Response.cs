@@ -1,5 +1,3 @@
-using PerInvest_API.src.Helpers;
-
 namespace PerInvest_API.src.Models;
 
 public class Response
@@ -41,13 +39,6 @@ public class Response
     {
         Data = data;
         Code = 200;
-    }
-
-    public Response(string message)
-    {
-        Data = null;
-        Code = 400;
-        Message = message;
     }
 
     public Response(int code, string message, dynamic? data = null)

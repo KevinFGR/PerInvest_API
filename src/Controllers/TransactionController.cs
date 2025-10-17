@@ -16,10 +16,10 @@ public class TransactionController :IEndpoint
 {
     public static void Map(IEndpointRouteBuilder app)
     {
-        app.MapGet("/", Get);
-        app.MapPost("/", Add).WithDataAnnotation<CreateTransactionDto>();
-        app.MapPut("/", Update).WithDataAnnotation<UpdateTransactionDto>();
-        app.MapDelete("/{id}", Delete);
+        app.MapGet("/", Get).RequireAuthorization();
+        app.MapPost("/", Add).RequireAuthorization().WithDataAnnotation<CreateTransactionDto>();
+        app.MapPut("/", Update).RequireAuthorization().WithDataAnnotation<UpdateTransactionDto>();
+        app.MapDelete("/{id}", Delete).RequireAuthorization();
     }
 
     public static async Task<IResult> Get(AppDbContext context, HttpContext httpContext)

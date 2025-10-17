@@ -1,6 +1,7 @@
 using MongoDB.Driver;
 using PerInvest_API.src.Models.Cryptos;
 using PerInvest_API.src.Models.Transactions;
+using PerInvest_API.src.Models.Users;
 
 namespace PerInvest_API.src.Data;
 
@@ -41,5 +42,10 @@ public class AppDbContext
     public IMongoCollection<Transaction> Transactions
     {
         get { return _database.GetCollection<Transaction>("transactions"); }
+    }
+
+    public IMongoCollection<User> Users
+    {
+        get { return _database.GetCollection<User>("users"); }
     }
 }

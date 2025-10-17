@@ -9,16 +9,18 @@ public static class Endpoint
         RouteGroupBuilder endpoints = app.MapGroup("");
 
         endpoints.MapGroup("/").WithTags("Health Check").MapGet("/", () => new { success = true });
+        endpoints.MapGroup("api/auth").WithTags("Auth").MapEndpoint<AuthController>();
         endpoints.MapGroup("api/cryptos").WithTags("Cryptos").MapEndpoint<CryptoController>();
         endpoints.MapGroup("api/ip").WithTags("Ip").MapEndpoint<IpController>();
         endpoints.MapGroup("api/transactions").WithTags("Transactions").MapEndpoint<TransactionController>();
+        endpoints.MapGroup("api/users").WithTags("Users").MapEndpoint<UserController>();
     }
 
-    public static RouteHandlerBuilder WithDataAnnotation<T>(this RouteHandlerBuilder builder)
+    public static RouteHandlerBuilder WithDataAnnotation<TDto>(this RouteHandlerBuilder builder)
     {
         return builder.AddEndpointFilter(async (context, next) =>
         {
-            T? dto = context.Arguments.OfType<T>().FirstOrDefault();
+            TDto? dto = context.Arguments.OfType<TDto>().FirstOrDefault();
             if (dto != null)
             {
                 List<ValidationResult> results = [];

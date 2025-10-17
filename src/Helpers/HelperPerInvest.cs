@@ -1,7 +1,13 @@
 using System.Globalization;
+using System.IdentityModel.Tokens.Jwt;
 using System.Reflection;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
+using Microsoft.IdentityModel.Tokens;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
+using PerInvest_API.src.Models.Users;
 
 namespace PerInvest_API.src.Helpers;
 
@@ -78,5 +84,60 @@ public static class HelperPerInvest
     public static List<dynamic> ToDynamic(this List<BsonDocument> documents)
     {
         return documents.Select(x => x.ToDynamic()).ToList();
+    }
+
+    public static string GenerateToken(User user, IConfiguration config)
+    {
+        string issuer = config["Jwt:Issuer"]!;
+        string audience = config["Jwt:Audience"]!;
+        string secretKey = config["Jwt:Key"]!;
+
+        SymmetricSecurityKey securityKey = new (Encoding.UTF8.GetBytes(secretKey!));
+        SigningCredentials credentials = new (securityKey, SecurityAlgorithms.HmacSha256);
+
+        Claim[] claims = [
+            new (JwtRegisteredClaimNames.Sub, user.Id),
+            new (JwtRegisteredClaimNames.UniqueName, user.Name),
+            new (JwtRegisteredClaimNames.Email, user.Name),
+            new (JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+        ];
+
+        JwtSecurityToken token = new (
+            issuer: issuer,
+            audience: audience,
+            claims: claims,
+            expires: DateTime.UtcNow.AddHours(1),
+            signingCredentials: credentials
+        );
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+        public static (string Salt, string Hash) GenerateHash(string password)
+    {
+        byte[] saltBytes = RandomNumberGenerator.GetBytes(16);
+
+        using var sha256 = SHA256.Create();
+        byte[] combinedBytes = Encoding.UTF8.GetBytes(password).Concat(saltBytes).ToArray()!;
+
+        byte[] hashBytes = SHA256.HashData(combinedBytes);
+
+        string salt = Convert.ToBase64String(saltBytes);
+        string hash = Convert.ToBase64String(hashBytes);
+
+        return (salt, hash);
+    }
+
+    public static bool PasswordIsValid(string password, string salt, string hash)
+    {
+        byte[] saltBytes = Convert.FromBase64String(salt);
+
+        using var sha256 = SHA256.Create();
+        byte[] combinedBytes = Encoding.UTF8.GetBytes(password).Concat(saltBytes).ToArray()!;
+
+        byte[] computedHash = SHA256.HashData(combinedBytes);
+        string computedHashBase64 = Convert.ToBase64String(computedHash);
+
+        return computedHashBase64 == hash;
     }
 }

@@ -6,8 +6,13 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.AddDbConfiguration();
 builder.AddDataContexts();
+builder.ConfigureAuthentication();
+builder.Services.AddAuthorization();
 
 WebApplication app = builder.Build();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.AddSwagger();
 app.UseHttpsRedirection();

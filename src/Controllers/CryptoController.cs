@@ -16,9 +16,9 @@ public class CryptoController :IEndpoint
     public static void Map(IEndpointRouteBuilder app)
     {
         app.MapGet("/", Get).RequireAuthorization();
-        app.MapPost("/", Add).WithDataAnnotation<CreateCryptoDto>();
-        app.MapPut("/", Update).WithDataAnnotation<UpdateCryptoDto>();
-        app.MapDelete("/{id}", Delete);
+        app.MapPost("/", Add).RequireAuthorization().WithDataAnnotation<CreateCryptoDto>();
+        app.MapPut("/", Update).RequireAuthorization().WithDataAnnotation<UpdateCryptoDto>();
+        app.MapDelete("/{id}", Delete).RequireAuthorization();
     }
 
     public static async Task<IResult> Get(AppDbContext context, HttpContext httpContext)

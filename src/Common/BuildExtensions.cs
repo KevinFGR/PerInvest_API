@@ -1,3 +1,6 @@
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using PerInvest_API.src.Data;
 
 namespace PerInvest_API.src.Common;
@@ -31,4 +34,30 @@ public static class BuildExtensions
     //                 .AllowCredentials()
     //         ));
     // }
+
+    public static void ConfigureAuthentication(this WebApplicationBuilder builder)
+    {
+        builder.Services.AddAuthentication(
+            options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            }
+        ).AddJwtBearer(
+            options => options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = builder.Configuration["Jwt:Issuer"],
+                ValidAudience = builder.Configuration["Jwt:Audience"],
+                IssuerSigningKey = new SymmetricSecurityKey
+                (
+                    Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)
+                ),
+                ClockSkew = TimeSpan.Zero
+            }
+        );
+    }
 }
