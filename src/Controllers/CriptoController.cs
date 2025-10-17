@@ -32,7 +32,9 @@ public class CryptoController :IEndpoint
                 .Skip(pagination.Skip)
                 .Limit(pagination.Limit)
                 .ToListAsync();
-            return new Response(data).Result;
+            long count = await context.Cryptos.CountDocumentsAsync(pagination.Filter);
+
+            return new PagedResponse<Crypto>(pagination, data, count).Result;
         }
         catch (Exception ex)
         {

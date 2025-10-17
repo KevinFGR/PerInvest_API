@@ -29,8 +29,10 @@ public class TransactionController :IEndpoint
             Pagination<Transaction> pagination = new(httpContext);
 
             BsonDocument[] pipeline = [
-                pagination.Match,
-
+                pagination.BsonFilter,
+                pagination.BsonSort,
+                pagination.BsonSkip,
+                pagination.BsonLimit,
                 new("$lookup", new BsonDocument{
                     {"from", "cryptos"},
                     {"let", new BsonDocument("idCrypto", "$idCrypto")},
@@ -47,11 +49,15 @@ public class TransactionController :IEndpoint
                 }),
 
                 new ("$project", new BsonDocument("_id", 0))
+
             ];
 
-            List<BsonDocument> bsonData = await context.Transactions.Aggregate<BsonDocument>(pipeline).ToListAsync();
+            pipeline.ToList().ForEach(x => { System.Console.WriteLine(x);  System.Console.WriteLine(",");});
 
-            return new Response(bsonData.ToDynamic()).Result;
+            List<BsonDocument> bsonData = await context.Transactions.Aggregate<BsonDocument>(pipeline).ToListAsync();
+            long count = await context.Transactions.CountDocumentsAsync(pagination.Filter);
+
+            return new PagedResponse<Transaction>(pagination, bsonData.ToDynamic(), count).Result;
         }
         catch (Exception ex)
         {

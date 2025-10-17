@@ -12,15 +12,25 @@ public class Pagination<TModel>
 
     public int PageSize { get; private set; } = 10;
 
-    public FilterDefinition<TModel> Filter { get; private set; }
+    public string Order { get; set; } = string.Empty;
 
-    public BsonDocument Match { get; private set; } = new("$match", new BsonDocument("$and", new BsonArray()));
+    public string SortString { get; set; } = string.Empty;
 
-    public SortDefinition<TModel>? Sort { get; private set; }
+    public FilterDefinition<TModel> Filter { get; set; } = Builders<TModel>.Filter.Empty;
+
+    public SortDefinition<TModel>? Sort { get; set; }
 
     public int Skip => (Page - 1) * PageSize;
 
     public int Limit => PageSize;
+
+    public BsonDocument BsonFilter { get; private set; } = new("$match", new BsonDocument("$and", new BsonArray()));
+
+    public BsonDocument BsonSort { get; private set; } = [];
+
+    public BsonDocument BsonSkip => new("$skip", Skip);
+
+    public BsonDocument BsonLimit => new("$limit", PageSize);
 
     public Pagination(HttpContext httpContext)
     {
@@ -28,11 +38,11 @@ public class Pagination<TModel>
 
         Page = int.TryParse(query["page"], out var page) && page > 0 ? page : 1;
         PageSize = int.TryParse(query["pageSize"], out var size) && size > 0 ? size : 10;
-        Filter = BuildFilter(query);
-        Sort = BuildSort(query);
+        BuildFilter(query);
+        BuildSort(query);
     }
 
-    private FilterDefinition<TModel> BuildFilter(IQueryCollection query)
+    private void BuildFilter(IQueryCollection query)
     {
         FilterDefinitionBuilder<TModel> builder = Builders<TModel>.Filter;
         List<FilterDefinition<TModel>> filters = [];
@@ -49,7 +59,7 @@ public class Pagination<TModel>
             if (value.Equals("null", StringComparison.OrdinalIgnoreCase))
             {
                 filters.Add(builder.Eq(linqKey, BsonNull.Value));
-                Match["$match"].AsBsonDocument.Add(key, BsonNull.Value);
+                BsonFilter["$match"].AsBsonDocument.Add(key, BsonNull.Value);
                 continue;
             }
             // if (string.IsNullOrWhiteSpace(value)) continue;
@@ -58,7 +68,7 @@ public class Pagination<TModel>
             if(propInfo is null)
             {
                 filters.Add(builder.Eq(linqKey, value));
-                Match["$match"].AsBsonDocument.Add(key, value);
+                BsonFilter["$match"].AsBsonDocument.Add(key, value);
                 continue;
             }
 
@@ -69,37 +79,37 @@ public class Pagination<TModel>
                 filters.Add(builder.Gte(linqKey, (convertedValue as DateTime[])![0]));
                 filters.Add(builder.Lt(linqKey, (convertedValue as DateTime[])![1]));
 
-                Match["$match"]["$and"].AsBsonArray.Add( new BsonDocument( 
+                BsonFilter["$match"]["$and"].AsBsonArray.Add( new BsonDocument( 
                     $"{key}", new BsonDocument("$gte" , (convertedValue as DateTime[])![0]) 
                 ));
-                Match["$match"]["$and"].AsBsonArray.Add( new BsonDocument( 
+                BsonFilter["$match"]["$and"].AsBsonArray.Add( new BsonDocument( 
                     $"{key}" , new BsonDocument("$lt", (convertedValue as DateTime[])![1])
                 ));
             }
             else
             {
                 filters.Add(builder.Eq(linqKey, convertedValue));
-                Match["$match"].AsBsonDocument.Add(key, BsonValue.Create(convertedValue));
+                BsonFilter["$match"].AsBsonDocument.Add(key, BsonValue.Create(convertedValue));
             }
         }
 
-        if(Match["$match"]["$and"].AsBsonArray.Count == 0) 
-            Match["$match"].AsBsonDocument.Remove("$and");
+        if(BsonFilter["$match"]["$and"].AsBsonArray.Count == 0) 
+            BsonFilter["$match"].AsBsonDocument.Remove("$and");
 
-        return filters.Count > 0 ? builder.And(filters) : builder.Empty;
+        Filter = filters.Count > 0 ? builder.And(filters) : builder.Empty;
     }
 
-    private static SortDefinition<TModel>? BuildSort(IQueryCollection query)
+    private void BuildSort(IQueryCollection query)
     {
         SortDefinitionBuilder<TModel> builder = Builders<TModel>.Sort;
-        string? sortField = query.ContainsKey("sort") ? query["sort"].ToString() : null;
-        string order = query.ContainsKey("order") ? query["order"].ToString().ToLower() : "asc";
+        Order = query.ContainsKey("sort") ? query["sort"].ToString() : "createdAt";
+        SortString = query.ContainsKey("order") ? query["order"].ToString().ToLower() : "asc";
 
-        if (string.IsNullOrWhiteSpace(sortField)) return null;
+        Sort = SortString == "desc"
+            ? builder.Descending(Order.FirstCharToUpper())
+            : builder.Ascending(Order.FirstCharToUpper());
 
-        return order == "desc"
-            ? builder.Descending(sortField.FirstCharToUpper())
-            : builder.Ascending(sortField.FirstCharToUpper());
+        BsonSort = new("$sort", new BsonDocument($"{Order}", SortString == "desc" ? -1 : 1));
     }
 
     private static object? ConvertValue(string value, Type targetType)

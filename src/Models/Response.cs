@@ -1,3 +1,5 @@
+using PerInvest_API.src.Helpers;
+
 namespace PerInvest_API.src.Models;
 
 public class Response
