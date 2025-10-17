@@ -15,7 +15,7 @@ public class CryptoController :IEndpoint
 {
     public static void Map(IEndpointRouteBuilder app)
     {
-        app.MapGet("/", Get);
+        app.MapGet("/", Get).RequireAuthorization();
         app.MapPost("/", Add).WithDataAnnotation<CreateCryptoDto>();
         app.MapPut("/", Update).WithDataAnnotation<UpdateCryptoDto>();
         app.MapDelete("/{id}", Delete);
@@ -38,7 +38,7 @@ public class CryptoController :IEndpoint
         }
         catch (Exception ex)
         {
-            return new Response($"Falha ao obter Cryptos: {ex.Message}").Result;
+            return new Response(500, $"Falha ao obter Cryptos: {ex.Message}").Result;
         }
     }
 
@@ -58,7 +58,7 @@ public class CryptoController :IEndpoint
         }
         catch(Exception ex)
         {
-            return new Response($"Falha ao salvar Crypto: {ex.Message}").Result;
+            return new Response(500, $"Falha ao salvar Crypto: {ex.Message}").Result;
         }
     }
 
@@ -67,7 +67,7 @@ public class CryptoController :IEndpoint
         try
         {
             Crypto? crypto = await context.Cryptos.Find(x => x.Id == request.Id && !x.Deleted).FirstOrDefaultAsync();
-            if(crypto is null) return new Response("Crypto não encontrada").Result;
+            if(crypto is null) return new Response(400, "Crypto não encontrada").Result;
             
             crypto.Description = request.Description;
             crypto.Color = request.Color;
@@ -81,7 +81,7 @@ public class CryptoController :IEndpoint
         }
         catch(Exception ex)
         {
-            return new Response($"Falha ao salvar Crypto: {ex.Message}").Result;
+            return new Response(500, $"Falha ao atualizar Crypto: {ex.Message}").Result;
         }
     }
 
@@ -90,7 +90,7 @@ public class CryptoController :IEndpoint
         try
         {
             bool hasTransactions = await context.Transactions.AsQueryable().AnyAsync(x => !x.Deleted && x.IdCrypto == id);
-            if(hasTransactions) return new Response("Impossível excluir crypto, há movimentações cadastradas com esta moeda").Result;
+            if(hasTransactions) return new Response(400, "Impossível excluir crypto, há movimentações cadastradas com esta moeda").Result;
 
             DeleteRequest request = new (httpContext, id);
             Expression<Func<Crypto, bool>> filter = x => x.Id == id;
@@ -104,7 +104,7 @@ public class CryptoController :IEndpoint
         }
         catch(Exception ex)
         {
-            return new Response($"Falha ao salvar Crypto: {ex.Message}").Result;
+            return new Response(500, $"Falha ao excluir crypto: {ex.Message}").Result;
         }
     }
 }
