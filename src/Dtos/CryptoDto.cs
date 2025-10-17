@@ -7,8 +7,10 @@ namespace PerInvest_API.src.Dtos;
 public class CreateCryptoDto : RequestBase
 {
     [Required(ErrorMessage = "Informe a Descrição")]
+    [MaxLength(100, ErrorMessage = "Descrição deve ter máximo de 100 caracteres")]
     public string Description { get; set; } = string.Empty;
 
+    [MaxLength(100, ErrorMessage = "Cor deve ter máximo de 100 caracteres")]
     public string Color { get; set; } = string.Empty;
 }
 
