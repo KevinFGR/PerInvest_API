@@ -16,6 +16,7 @@ public class UserController :IEndpoint
     public static void Map(IEndpointRouteBuilder app)
     {
         app.MapGet("/", Get).RequireAuthorization();
+        app.MapGet("/{id}", GetById).RequireAuthorization();
         app.MapPost("/", Add).RequireAuthorization().WithDataAnnotation<CreateUserDto>();
         app.MapPut("/", Update).RequireAuthorization().WithDataAnnotation<UpdateUserDto>();
         app.MapDelete("/{id}", Delete).RequireAuthorization();
@@ -40,6 +41,22 @@ public class UserController :IEndpoint
             long count = await context.Users.CountDocumentsAsync(pagination.Filter);
 
             return new PagedResponse<User>(pagination, data, count).Result;
+        }
+        catch (Exception ex)
+        {
+            return new Response(500, $"Falha ao obter usuário: {ex.Message}").Result;
+        }
+    }
+
+    public static async Task<IResult> GetById(AppDbContext context, HttpContext httpContext, string id)
+    {
+        try
+        {
+            User data = await context.Users
+                .Find(x=> x.Id ==id && !x.Deleted)
+                .FirstOrDefaultAsync();
+
+            return new Response(data).Result;
         }
         catch (Exception ex)
         {

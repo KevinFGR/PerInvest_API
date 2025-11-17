@@ -17,6 +17,7 @@ public class TransactionController :IEndpoint
     public static void Map(IEndpointRouteBuilder app)
     {
         app.MapGet("/", Get).RequireAuthorization();
+        app.MapGet("/{id}", GetById).RequireAuthorization();
         app.MapPost("/", Add).RequireAuthorization().WithDataAnnotation<CreateTransactionDto>();
         app.MapPut("/", Update).RequireAuthorization().WithDataAnnotation<UpdateTransactionDto>();
         app.MapDelete("/{id}", Delete).RequireAuthorization();
@@ -62,6 +63,22 @@ public class TransactionController :IEndpoint
         catch (Exception ex)
         {
             return new Response(500, $"Falha ao obter movimentações: {ex.Message}").Result;
+        }
+    }
+
+    public static async Task<IResult> GetById(AppDbContext context, HttpContext httpContext, string id)
+    {
+        try
+        {
+            Transaction data = await context.Transactions
+                .Find(x=> x.Id ==id && !x.Deleted)
+                .FirstOrDefaultAsync();
+
+            return new Response(data).Result;
+        }
+        catch (Exception ex)
+        {
+            return new Response(500, $"Falha ao obter movimentação: {ex.Message}").Result;
         }
     }
 

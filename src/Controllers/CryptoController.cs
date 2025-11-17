@@ -16,6 +16,7 @@ public class CryptoController :IEndpoint
     public static void Map(IEndpointRouteBuilder app)
     {
         app.MapGet("/", Get).RequireAuthorization();
+        app.MapGet("/{id}", GetById).RequireAuthorization();
         app.MapPost("/", Add).RequireAuthorization().WithDataAnnotation<CreateCryptoDto>();
         app.MapPut("/", Update).RequireAuthorization().WithDataAnnotation<UpdateCryptoDto>();
         app.MapDelete("/{id}", Delete).RequireAuthorization();
@@ -39,6 +40,22 @@ public class CryptoController :IEndpoint
         catch (Exception ex)
         {
             return new Response(500, $"Falha ao obter Cryptos: {ex.Message}").Result;
+        }
+    }
+
+    public static async Task<IResult> GetById(AppDbContext context, HttpContext httpContext, string id)
+    {
+        try
+        {
+            Crypto data = await context.Cryptos
+                .Find(x=> x.Id ==id && !x.Deleted)
+                .FirstOrDefaultAsync();
+
+            return new Response(data).Result;
+        }
+        catch (Exception ex)
+        {
+            return new Response(500, $"Falha ao obter Crypto: {ex.Message}").Result;
         }
     }
 
