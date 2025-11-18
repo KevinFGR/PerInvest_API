@@ -63,6 +63,13 @@ public class CryptoController :IEndpoint
     {
         try
         {
+            Crypto? descriptionRepeated = await context.Cryptos.Find(x => 
+                x.Description.ToLower().Equals(request.Description.ToLower()) && !x.Deleted
+            ).FirstOrDefaultAsync();
+
+            if(descriptionRepeated is not null) 
+                return new Response(400, "Já existe uma Crypto cadastrada com essa descrição").Result;
+
             Crypto crypto = request.Map<Crypto>();
             crypto.CreatedAt = DateTime.Now;
             crypto.UpdatedAt = DateTime.Now;
@@ -85,6 +92,15 @@ public class CryptoController :IEndpoint
         {
             Crypto? crypto = await context.Cryptos.Find(x => x.Id == request.Id && !x.Deleted).FirstOrDefaultAsync();
             if(crypto is null) return new Response(400, "Crypto não encontrada").Result;
+
+            Crypto? descriptionRepeated = await context.Cryptos.Find(x => 
+                x.Id != crypto.Id &&
+                x.Description.ToLower().Equals(request.Description.ToLower()) &&
+                !x.Deleted
+            ).FirstOrDefaultAsync();
+            
+            if(descriptionRepeated is not null) 
+                return new Response(400, "Já existe uma Crypto cadastrada com essa descrição").Result;
             
             crypto.Description = request.Description;
             crypto.Color = request.Color;
