@@ -20,6 +20,7 @@ public class AuthController :IEndpoint
     {
         try
         {
+            request.Email = request.Email.ToLower();
             User? user = await context.Users.Find(x => x.Email == request.Email && !x.Deleted).FirstOrDefaultAsync();
             if(user is null) 
                 return new Response(400, "Credenciais inválidas").Result;

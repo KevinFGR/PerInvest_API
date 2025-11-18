@@ -98,7 +98,7 @@ public class UserController :IEndpoint
             User? user = await context.Users.Find(x => x.Id == request.Id && !x.Deleted).FirstOrDefaultAsync();
             if(user is null) return new Response(400, "Usuário não encontrado").Result;
             
-            user.Email = request.Email;
+            user.Email = request.Email.ToLower();
             user.Name = request.Name;
             user.UpdatedBy = request.UserId;
             user.UpdatedAt = DateTime.Now;
