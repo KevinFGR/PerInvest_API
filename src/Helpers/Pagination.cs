@@ -87,7 +87,7 @@ public class Pagination<TModel>
                 ));
             }
             else if (propInfo.PropertyType == typeof(string)){
-                filters.Add(builder.Regex(linqKey, new BsonRegularExpression($"^{convertedValue}$", "i")));
+                filters.Add(builder.Regex(linqKey, new BsonRegularExpression($"{convertedValue}", "i")));
                 BsonFilter["$match"].AsBsonDocument.Add(key, new BsonDocument{
                     {"$regex", BsonValue.Create(convertedValue)},
                     {"$options", "i"}
