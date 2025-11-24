@@ -86,6 +86,13 @@ public class Pagination<TModel>
                     $"{key}" , new BsonDocument("$lt", (convertedValue as DateTime[])![1])
                 ));
             }
+            else if (propInfo.PropertyType == typeof(string)){
+                filters.Add(builder.Regex(linqKey, new BsonRegularExpression($"^{convertedValue}$", "i")));
+                BsonFilter["$match"].AsBsonDocument.Add(key, new BsonDocument{
+                    {"$regex", BsonValue.Create(convertedValue)},
+                    {"$options", "i"}
+                });
+            }
             else
             {
                 filters.Add(builder.Eq(linqKey, convertedValue));
@@ -116,7 +123,7 @@ public class Pagination<TModel>
     {
         try
         {
-            if (targetType == typeof(string)) return value;
+            if (targetType == typeof(string)) return value.ToLower();
 
             if (targetType == typeof(int) || targetType == typeof(int?))
                 return int.TryParse(value, out var intValue) ? intValue : null;
