@@ -37,7 +37,7 @@ public class AuthController :IEndpoint
         }
         catch(Exception ex)
         {
-            return new Response(500, $"Falha ao salvar usuário: {ex.Message}").Result;
+            return new Response(500, $"Falha ao logar: {ex.Message}").Result;
         }
     }
 }
