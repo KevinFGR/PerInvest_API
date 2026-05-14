@@ -16,6 +16,7 @@ public class CryptoController :IEndpoint
     public static void Map(IEndpointRouteBuilder app)
     {
         app.MapGet("/", Get).RequireAuthorization();
+        app.MapGet("/select", GetSelect).RequireAuthorization();
         app.MapGet("/{id}", GetById).RequireAuthorization();
         app.MapPost("/", Add).RequireAuthorization().WithDataAnnotation<CreateCryptoDto>();
         app.MapPut("/", Update).RequireAuthorization().WithDataAnnotation<UpdateCryptoDto>();
@@ -36,6 +37,28 @@ public class CryptoController :IEndpoint
             long count = await context.Cryptos.CountDocumentsAsync(pagination.Filter);
 
             return new PagedResponse<Crypto>(pagination, data, count).Result;
+        }
+        catch (Exception ex)
+        {
+            return new Response(500, $"Falha ao obter Cryptos: {ex.Message}").Result;
+        }
+    }
+
+    public static async Task<IResult> GetSelect(AppDbContext context, HttpContext httpContext)
+    {
+        try
+        {
+            Pagination<Crypto> pagination = new(httpContext);
+            var data = await context.Cryptos
+                .Find(pagination.Filter)
+                .Sort(pagination.Sort)
+                .Project(x => new {
+                    x.Id,
+                    x.Description
+                })
+                .ToListAsync();
+
+            return new Response(data).Result;
         }
         catch (Exception ex)
         {
