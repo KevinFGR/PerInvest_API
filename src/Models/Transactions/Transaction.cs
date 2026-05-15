@@ -31,4 +31,7 @@ public class Transaction : ModelBase
 
     [BsonElement("sold")]
     public bool Sold { get; set; }
+
+    [BsonElement("bank")]
+    public string Bank { get; set; } = string.Empty;
 }

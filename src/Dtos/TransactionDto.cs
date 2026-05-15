@@ -27,6 +27,9 @@ public class CreateTransactionDto : RequestBase
 
     [Required(ErrorMessage = "Informe se é uma compra ou venda")]
     public bool? Sold { get; set; }
+
+    [Required(ErrorMessage = "Informe a corretora")]
+    public string Bank { get; set; } = string.Empty;
 }
 
 public class UpdateTransactionDto : CreateTransactionDto

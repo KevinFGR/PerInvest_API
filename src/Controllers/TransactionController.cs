@@ -50,10 +50,7 @@ public class TransactionController :IEndpoint
                 }),
 
                 new ("$project", new BsonDocument("_id", 0))
-
             ];
-
-            pipeline.ToList().ForEach(x => { System.Console.WriteLine(x);  System.Console.WriteLine(",");});
 
             List<BsonDocument> bsonData = await context.Transactions.Aggregate<BsonDocument>(pipeline).ToListAsync();
             long count = await context.Transactions.CountDocumentsAsync(pagination.Filter);
