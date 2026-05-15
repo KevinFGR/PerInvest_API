@@ -53,6 +53,14 @@ public class Pagination<TModel>
             string key = property.Key;
             dynamic value = property.Value.ToString();
 
+            bool isGreaterThan = key.StartsWith("gt$");
+            bool isLowerThan = key.StartsWith("lt$");
+
+            if(isGreaterThan || isLowerThan){
+                key = key[3..];
+                linqKey = key.FirstCharToUpper();
+            }
+
             if (key.ToLower() is "page" or "pagesize" or "sort" or "order") 
                 continue;
 
@@ -76,15 +84,29 @@ public class Pagination<TModel>
 
             if(propInfo.PropertyType == typeof(DateTime) || propInfo.PropertyType == typeof(DateTime?))
             {
-                filters.Add(builder.Gte(linqKey, (convertedValue as DateTime[])![0]));
-                filters.Add(builder.Lt(linqKey, (convertedValue as DateTime[])![1]));
+                if(isGreaterThan){
+                    filters.Add(builder.Gte(linqKey, (convertedValue as DateTime[])![0]));
+                    BsonFilter["$match"]["$and"].AsBsonArray.Add( new BsonDocument( 
+                        $"{key}", new BsonDocument("$gte" , (convertedValue as DateTime[])![0]) 
+                    ));
+                }
+                else if(isLowerThan){
+                    filters.Add(builder.Lt(linqKey, (convertedValue as DateTime[])![1]));
+                    BsonFilter["$match"]["$and"].AsBsonArray.Add( new BsonDocument( 
+                        $"{key}" , new BsonDocument("$lt", (convertedValue as DateTime[])![1])
+                    ));
+                } else {
+                    filters.Add(builder.Gte(linqKey, (convertedValue as DateTime[])![0]));
+                    filters.Add(builder.Lt(linqKey, (convertedValue as DateTime[])![1]));
 
-                BsonFilter["$match"]["$and"].AsBsonArray.Add( new BsonDocument( 
-                    $"{key}", new BsonDocument("$gte" , (convertedValue as DateTime[])![0]) 
-                ));
-                BsonFilter["$match"]["$and"].AsBsonArray.Add( new BsonDocument( 
-                    $"{key}" , new BsonDocument("$lt", (convertedValue as DateTime[])![1])
-                ));
+                    BsonFilter["$match"]["$and"].AsBsonArray.Add( new BsonDocument( 
+                        $"{key}", new BsonDocument("$gte" , (convertedValue as DateTime[])![0]) 
+                    ));
+                    BsonFilter["$match"]["$and"].AsBsonArray.Add( new BsonDocument( 
+                        $"{key}" , new BsonDocument("$lt", (convertedValue as DateTime[])![1])
+                    ));
+                }
+
             }
             else if (propInfo.PropertyType == typeof(string)){
                 filters.Add(builder.Regex(linqKey, new BsonRegularExpression($"{convertedValue}", "i")));
