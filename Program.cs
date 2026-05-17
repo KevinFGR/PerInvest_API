@@ -8,6 +8,7 @@ builder.AddDbConfiguration();
 builder.AddDataContexts();
 builder.ConfigureAuthentication();
 builder.Services.AddAuthorization();
+builder.Services.AddHttpClient();
 
 WebApplication app = builder.Build();
 
