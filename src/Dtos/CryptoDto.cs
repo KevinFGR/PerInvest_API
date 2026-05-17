@@ -12,6 +12,8 @@ public class CreateCryptoDto : RequestBase
 
     [MaxLength(100, ErrorMessage = "Cor deve ter máximo de 100 caracteres")]
     public string Color { get; set; } = string.Empty;
+
+    public string ApiIndex { get; set; } = string.Empty;
 }
 
 public class UpdateCryptoDto : CreateCryptoDto

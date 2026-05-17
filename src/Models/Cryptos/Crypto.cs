@@ -14,4 +14,7 @@ public class Crypto : ModelBase
 
     [BsonElement("color")]
     public string Color { get; set; } = string.Empty;
+
+    [BsonElement("apiIndex")]
+    public string ApiIndex { get; set; } = string.Empty;
 }
