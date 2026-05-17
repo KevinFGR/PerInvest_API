@@ -80,7 +80,7 @@ public class Pagination<TModel>
                 continue;
             }
 
-            object? convertedValue = ConvertValue(value, propInfo.PropertyType);
+            object? convertedValue = ConvertValue(value, propInfo);
 
             if(propInfo.PropertyType == typeof(DateTime) || propInfo.PropertyType == typeof(DateTime?))
             {
@@ -108,7 +108,7 @@ public class Pagination<TModel>
                 }
 
             }
-            else if (propInfo.PropertyType == typeof(string)){
+            else if (propInfo.PropertyType == typeof(string) && !propInfo.Name.ToLower().Equals("id")){
                 filters.Add(builder.Regex(linqKey, new BsonRegularExpression($"{convertedValue}", "i")));
                 BsonFilter["$match"].AsBsonDocument.Add(key, new BsonDocument{
                     {"$regex", BsonValue.Create(convertedValue)},
@@ -141,10 +141,14 @@ public class Pagination<TModel>
         BsonSort = new("$sort", new BsonDocument($"{Order}", SortString == "desc" ? -1 : 1));
     }
 
-    private static object? ConvertValue(string value, Type targetType)
+    private static object? ConvertValue(string value, PropertyInfo propInfo)
     {
         try
         {
+
+            Type targetType = propInfo.PropertyType;
+            if (propInfo.Name.ToLower().Equals("id")) return new ObjectId(value);
+
             if (targetType == typeof(string)) return value.ToLower();
 
             if (targetType == typeof(int) || targetType == typeof(int?))
