@@ -128,6 +128,7 @@ public class CryptoController :IEndpoint
             crypto.Description = request.Description;
             crypto.Color = request.Color;
             crypto.UpdatedBy = request.UserId;
+            crypto.ApiIndex = request.ApiIndex;
             crypto.UpdatedAt = DateTime.Now;
 
             Expression<Func<Crypto, bool>> filter = x => x.Id == request.Id && !x.Deleted;

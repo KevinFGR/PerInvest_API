@@ -11,6 +11,7 @@ public static class Endpoint
         endpoints.MapGroup("/").WithTags("Health Check").MapGet("/", () => new { success = true });
         endpoints.MapGroup("api/auth").WithTags("Auth").MapEndpoint<AuthController>();
         endpoints.MapGroup("api/cryptos").WithTags("Cryptos").MapEndpoint<CryptoController>();
+        endpoints.MapGroup("api/home").WithTags("Home").MapEndpoint<HomeController>();
         endpoints.MapGroup("api/ip").WithTags("Ip").MapEndpoint<IpController>();
         endpoints.MapGroup("api/transactions").WithTags("Transactions").MapEndpoint<TransactionController>();
         endpoints.MapGroup("api/users").WithTags("Users").MapEndpoint<UserController>();
