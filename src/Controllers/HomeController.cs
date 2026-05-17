@@ -34,7 +34,7 @@ public class HomeController :IEndpoint
                     x.description,
                     x.quotation,
                     quotationNow,
-                    valorizatio = valorization == null ? null : valorization*100,
+                    valorization = valorization == null ? null : valorization*100,
                     valueNow,
                 } as dynamic;
             }).ToList();
