@@ -36,8 +36,11 @@ public class HomeController :IEndpoint
                     quotationNow,
                     valorization = valorization == null ? null : valorization*100,
                     valueNow,
+                    x.color
                 } as dynamic;
             }).ToList();
+
+            cryptosPrice = cryptosPrice.Select(x => new { x.description, x.value, x.color } as dynamic).ToList();
 
             return new Response(new {
                 cryptosPrice,
@@ -82,7 +85,8 @@ public class HomeController :IEndpoint
                 {"value", 1},
                 {"quotation", 1},
                 {"description", new BsonDocument("$first", "$crypto.description")},
-                {"apiIndex", new BsonDocument("$first", "$crypto.apiIndex")}
+                {"apiIndex", new BsonDocument("$first", "$crypto.apiIndex")},
+                {"color", new BsonDocument("$first", "$crypto.color")}
             }),
 
             new("$sort", new BsonDocument("description", 1)),
@@ -98,7 +102,8 @@ public class HomeController :IEndpoint
             .Find(x => !x.Deleted && !string.IsNullOrEmpty(x.ApiIndex))
             .Project(x => new{
                 x.ApiIndex,
-                x.Description
+                x.Description,
+                x.Color
             })
             .ToListAsync();
 
@@ -112,7 +117,8 @@ public class HomeController :IEndpoint
         List<dynamic> response = bsonResult.Elements.Select(prop => new{
             description = cryptos.Where(x => x.ApiIndex == prop.Name).Select(x => x.Description).FirstOrDefault(),
             apiIndex = prop.Name,
-            value = Convert.ToDouble(prop.Value["brl"].ToString(), CultureInfo.InvariantCulture)
+            value = Convert.ToDouble(prop.Value["brl"].ToString(), CultureInfo.InvariantCulture),
+            color = cryptos.Where(x => x.ApiIndex == prop.Name).Select(x => x.Color).FirstOrDefault()
         } as dynamic).ToList();
 
         return response;
