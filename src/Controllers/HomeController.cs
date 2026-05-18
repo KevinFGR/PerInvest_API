@@ -30,6 +30,7 @@ public class HomeController :IEndpoint
 
                 return new
                 {
+                    x.idCrypto,
                     x.value,
                     x.description,
                     x.quotation,
@@ -39,8 +40,6 @@ public class HomeController :IEndpoint
                     x.color
                 } as dynamic;
             }).ToList();
-
-            cryptosPrice = cryptosPrice.Select(x => new { x.description, x.value, x.color } as dynamic).ToList();
 
             return new Response(new {
                 cryptosPrice,
@@ -81,11 +80,11 @@ public class HomeController :IEndpoint
 
             new ("$project", new BsonDocument {
                 {"_id", 0},
-                // {"id", new BsonDocument("$toString", "$_id")},
                 {"value", 1},
                 {"quotation", 1},
                 {"description", new BsonDocument("$first", "$crypto.description")},
                 {"apiIndex", new BsonDocument("$first", "$crypto.apiIndex")},
+                {"idCrypto", MongoHelper.ToStringFirst("$crypto._id")},
                 {"color", new BsonDocument("$first", "$crypto.color")}
             }),
 
@@ -101,6 +100,7 @@ public class HomeController :IEndpoint
         var cryptos = await context.Cryptos
             .Find(x => !x.Deleted && !string.IsNullOrEmpty(x.ApiIndex))
             .Project(x => new{
+                x.Id,
                 x.ApiIndex,
                 x.Description,
                 x.Color
@@ -114,12 +114,17 @@ public class HomeController :IEndpoint
             return [];
 
         BsonDocument bsonResult = BsonDocument.Parse(apiResult.Data);
-        List<dynamic> response = bsonResult.Elements.Select(prop => new{
-            description = cryptos.Where(x => x.ApiIndex == prop.Name).Select(x => x.Description).FirstOrDefault(),
-            apiIndex = prop.Name,
-            value = Convert.ToDouble(prop.Value["brl"].ToString(), CultureInfo.InvariantCulture),
-            color = cryptos.Where(x => x.ApiIndex == prop.Name).Select(x => x.Color).FirstOrDefault()
-        } as dynamic).ToList();
+        List<dynamic> response = bsonResult.Elements.Select(prop => {
+            var currentCrypto = cryptos.Where(x => x.ApiIndex == prop.Name).FirstOrDefault();
+            return new
+            {
+                idCrypto = currentCrypto?.Id ?? "",
+                description = currentCrypto?.Description ?? "",
+                apiIndex = prop.Name,
+                value = Convert.ToDouble(prop.Value["brl"].ToString(), CultureInfo.InvariantCulture),
+                color = currentCrypto?.Color ?? ""
+            } as dynamic;
+        }).ToList();
 
         return response;
     }
