@@ -8,6 +8,9 @@ using PerInvest_API.src.Dtos.Shared;
 using PerInvest_API.src.Helpers;
 using PerInvest_API.src.Common;
 using MongoDB.Driver.Linq;
+using MongoDB.Bson;
+using System.Globalization;
+using PerInvest_API.src.Models.Transactions;
 
 namespace PerInvest_API.src.Controllers;
 
@@ -66,15 +69,96 @@ public class CryptoController :IEndpoint
         }
     }
 
-    public static async Task<IResult> GetById(AppDbContext context, HttpContext httpContext, string id)
+    public static async Task<IResult> GetById(AppDbContext context, HttpContext httpContext, IHttpClientFactory httpClientFactory,string id)
     {
         try
         {
-            Crypto data = await context.Cryptos
-                .Find(x=> x.Id ==id && !x.Deleted)
-                .FirstOrDefaultAsync();
+            Pagination<Transaction> pagination = new(httpContext);
+            BsonDocument[] pipeline = [
+                new ("$match", new BsonDocument{
+                    {"_id", new ObjectId(id)},
+                    {"deleted", false}
+                }),
 
-            return new Response(data).Result;
+                new ("$lookup", new BsonDocument{
+                    {"from", "transactions"},
+                    {"let", new BsonDocument("field0", "$_id")},
+                    {"pipeline", new BsonArray{
+                        new BsonDocument("$match", new BsonDocument( "$expr", new BsonDocument("$and", new BsonArray{
+                            new BsonDocument("$eq", new BsonArray{"$$field0", "$idCrypto" }),
+                            new BsonDocument("$eq", new BsonArray{"$deleted", false})
+                        }))),
+
+                        pagination.BsonFilter,
+                        pagination.BsonSort,
+                        pagination.BsonSkip,
+                        pagination.BsonLimit,
+
+                        new BsonDocument("$project", new BsonDocument{
+                            {"_id", 0},
+                            {"id", MongoHelper.ToString("$_id")},
+                            {"value", 1},
+                            {"quotation", 1},
+                            {"tax", 1},
+                            {"bank", 1},
+                            {"type", 1},
+                            {"date", 1},
+                            {"sold", 1},
+                        })
+                    }},
+                    {"as", "transactions"}
+                }),
+
+                new ("$project", new BsonDocument{
+                    {"_id", 0},
+                    {"id", MongoHelper.ToString("$_id")},
+                    {"description", 1},
+                    {"color", 1},
+                    {"apiIndex", 1},
+                    {"transactions", 1},
+                    {"quotation", (decimal?)null},
+                })
+            ];
+            dynamic data = await context.Cryptos.Aggregate<dynamic>(pipeline).FirstOrDefaultAsync();
+
+            if(data is null)
+                return new Response(400, "Crypto não encontrada").Result;
+
+            Response apiResult = await HelperHttp.GetString(httpClientFactory, $"https://api.coingecko.com/api/v3/simple/price?ids={data.apiIndex}&vs_currencies=usd,brl");
+            if (apiResult.Success)
+            {
+                BsonDocument bsonResult = BsonDocument.Parse(apiResult.Data);
+                if (bsonResult.Contains(data.apiIndex))
+                    data.quotation = Convert.ToDouble(bsonResult[data.apiIndex]["brl"].ToString(), CultureInfo.InvariantCulture);
+
+                List<dynamic> transactions = data.transactions;
+                data.transactions = transactions.Select(transaction =>
+                {
+                    if(transaction.type != "purchase" || transaction.sold )
+                        return transaction;
+                    
+                    double? valorization = (data.quotation / transaction.quotation) - 1;
+                    double? quotationNow = data.quotation;
+                    double? valueNow = transaction.value + (transaction.value * valorization);
+
+                    return new
+                    {
+                        transaction.date,
+                        transaction.type,
+                        transaction.value,
+                        transaction.quotation,
+                        transaction.tax,
+                        transaction.bank,
+                        quotationNow,
+                        valorization = valorization == null ? null : valorization*100,
+                        valueNow,
+                    };
+                }).ToList();
+            }
+
+            long count = await context.Transactions.CountDocumentsAsync(pagination.Filter & Builders<Transaction>.Filter.Eq(x => x.IdCrypto, id));
+
+            return new PagedResponse<Transaction>(pagination, data, count).Result;
         }
         catch (Exception ex)
         {
