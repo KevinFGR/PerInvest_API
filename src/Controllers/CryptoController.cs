@@ -11,6 +11,7 @@ using MongoDB.Driver.Linq;
 using MongoDB.Bson;
 using System.Globalization;
 using PerInvest_API.src.Models.Transactions;
+using MongoDB.Bson.Serialization;
 
 namespace PerInvest_API.src.Controllers;
 
@@ -21,6 +22,7 @@ public class CryptoController :IEndpoint
         app.MapGet("/", Get).RequireAuthorization();
         app.MapGet("/select", GetSelect).RequireAuthorization();
         app.MapGet("/{id}", GetById).RequireAuthorization();
+        app.MapGet("/price-history/{id}", GetPriceHistory).RequireAuthorization();
         app.MapPost("/", Add).RequireAuthorization().WithDataAnnotation<CreateCryptoDto>();
         app.MapPut("/", Update).RequireAuthorization().WithDataAnnotation<UpdateCryptoDto>();
         app.MapDelete("/{id}", Delete).RequireAuthorization();
@@ -166,13 +168,47 @@ public class CryptoController :IEndpoint
         }
     }
 
+    public static async Task<IResult> GetPriceHistory(AppDbContext context, HttpContext httpContext, IHttpClientFactory httpClientFactory, string id)
+    {
+        try
+        {
+            Pagination<dynamic> pagination = new(httpContext);
+            string? apiIndex = await context.Cryptos.Find(x => !x.Deleted && x.Id == id).Project(x => x.ApiIndex).FirstOrDefaultAsync();
+            if(string.IsNullOrEmpty(apiIndex))
+                return new Response(new { prices = new List<object>(), totalVolumes = new List<object>()}).Result;
+
+            string uri = $"https://api.coingecko.com/api/v3/coins/{apiIndex}/market_chart/range?vs_currency=brl";
+            if(pagination.BsonFilter["$match"].AsBsonDocument.Contains("from"))
+                uri += $"&from={ConvertToUnixTimeSeconds(pagination.BsonFilter["$match"]["from"])}";
+            if(pagination.BsonFilter["$match"].AsBsonDocument.Contains("to"))
+                uri += $"&to={ConvertToUnixTimeSeconds(pagination.BsonFilter["$match"]["to"])}";
+            if(pagination.BsonFilter["$match"].AsBsonDocument.Contains("days"))
+                uri = $"https://api.coingecko.com/api/v3/coins/{apiIndex}/market_chart?vs_currency=brl&days={pagination.BsonFilter["$match"]["days"]}";
+            Response apiResult = await HelperHttp.GetString(httpClientFactory, uri);
+            if(!apiResult.Success)
+                return new Response(new { prices = new List<object>(), totalVolumes = new List<object>()}).Result;
+
+            BsonDocument bsonResult = BsonDocument.Parse(apiResult!.Data);
+            List<object> prices = BsonSerializer.Deserialize<List<object>>(bsonResult["prices"].ToJson());
+            List<object> volumes = BsonSerializer.Deserialize<List<object>>(bsonResult["total_volumes"].ToJson());
+
+            return new Response(new{prices, volumes}).Result;
+        }
+        catch (Exception ex)
+        {
+            return new Response(400, $"Falha ao obter histórico da moeda: {ex.Message}").Result;
+        }
+    }
+
     public static async Task<IResult> Add(AppDbContext context, CreateCryptoDto request)
     {
         try
         {
-            Crypto? descriptionRepeated = await context.Cryptos.Find(x => 
-                x.Description.ToLower().Equals(request.Description.ToLower()) && !x.Deleted
-            ).FirstOrDefaultAsync();
+            string? descriptionRepeated = await context.Cryptos.Find(x => 
+                    x.Description.ToLower().Equals(request.Description.ToLower()) && !x.Deleted
+                )
+                .Project(x => x.Id)
+                .FirstOrDefaultAsync();
 
             if(descriptionRepeated is not null) 
                 return new Response(400, "Já existe uma Crypto cadastrada com essa descrição").Result;
@@ -200,11 +236,13 @@ public class CryptoController :IEndpoint
             Crypto? crypto = await context.Cryptos.Find(x => x.Id == request.Id && !x.Deleted).FirstOrDefaultAsync();
             if(crypto is null) return new Response(400, "Crypto não encontrada").Result;
 
-            Crypto? descriptionRepeated = await context.Cryptos.Find(x => 
-                x.Id != crypto.Id &&
-                x.Description.ToLower().Equals(request.Description.ToLower()) &&
-                !x.Deleted
-            ).FirstOrDefaultAsync();
+            string? descriptionRepeated = await context.Cryptos.Find(x => 
+                    x.Id != crypto.Id &&
+                    x.Description.ToLower().Equals(request.Description.ToLower()) &&
+                    !x.Deleted
+                )
+                .Project(x => x.Id)
+                .FirstOrDefaultAsync();
             
             if(descriptionRepeated is not null) 
                 return new Response(400, "Já existe uma Crypto cadastrada com essa descrição").Result;
@@ -247,5 +285,12 @@ public class CryptoController :IEndpoint
         {
             return new Response(500, $"Falha ao excluir crypto: {ex.Message}").Result;
         }
+    }
+
+    private static long ConvertToUnixTimeSeconds(BsonValue value)
+    {
+        return new DateTimeOffset(
+            DateTime.Parse(value.AsString)
+        ).ToUnixTimeSeconds();
     }
 }
