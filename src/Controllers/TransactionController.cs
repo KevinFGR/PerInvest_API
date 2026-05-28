@@ -9,6 +9,11 @@ using PerInvest_API.src.Common;
 using PerInvest_API.src.Dtos.Shared;
 using System.Linq.Expressions;
 using MongoDB.Bson;
+using PerInvest_API.src.Models.Cryptos;
+using System.Globalization;
+using System.Text.RegularExpressions;
+using CsvHelper.Configuration;
+using CsvHelper;
 
 namespace PerInvest_API.src.Controllers;
 
@@ -21,6 +26,7 @@ public class TransactionController :IEndpoint
         app.MapPost("/", Add).RequireAuthorization().WithDataAnnotation<CreateTransactionDto>();
         app.MapPut("/", Update).RequireAuthorization().WithDataAnnotation<UpdateTransactionDto>();
         app.MapDelete("/{id}", Delete).RequireAuthorization();
+        app.MapPost("/import", ImportTransactions).DisableAntiforgery().RequireAuthorization();
     }
 
     public static async Task<IResult> Get(AppDbContext context, HttpContext httpContext)
@@ -146,5 +152,159 @@ public class TransactionController :IEndpoint
         {
             return new Response(500, $"Falha ao excluir movimentação: {ex.Message}").Result;
         }
+    }
+
+    public static async Task<IResult> ImportTransactions(AppDbContext context, IFormFile csvFile)
+    {
+        try
+        {
+            if (csvFile == null || csvFile.Length == 0)
+            {
+                return new Response(400, "Envie o arquivo").Result;
+            }
+
+            List<Transaction> transactions = [];
+            using var stream = csvFile.OpenReadStream();
+            using var reader = new StreamReader(stream);
+            var config = new CsvConfiguration(CultureInfo.InvariantCulture)
+            {
+                Delimiter = ",",
+                HasHeaderRecord = true
+            };
+            using var csv = new CsvReader(reader, config);
+            csv.Read();
+            csv.ReadHeader();
+            while(csv.Read())
+            {
+                if(string.IsNullOrEmpty(csv.GetField("MOEDA")))
+                    continue;
+
+                string? idCrypto = await context.Cryptos
+                    .Find(x => !x.Deleted && x.Description.ToUpper().Equals(csv.GetField("MOEDA")!.ToUpper()))
+                    .Project(x => x.Id)
+                    .FirstOrDefaultAsync();
+
+                if(idCrypto is null)
+                {
+                    Crypto crypto = new()
+                    {
+                        Description = csv.GetField("MOEDA")!,
+                        CreatedAt = DateTime.Now,
+                        UpdatedAt = DateTime.Now
+                    };
+
+                    await context.Cryptos.InsertOneAsync(crypto);
+                    idCrypto = crypto.Id;
+                }
+
+                Transaction transaction = new();
+                transaction.IdCrypto = idCrypto;
+                transaction.Type = csv.GetField("TIPO")!.ToUpper().Equals("COMPRA") ? "PURCHASE" : "SALE";
+                transaction.Date = DateTime.ParseExact(csv.GetField("DATA")!, "dd/MM/yyyy", CultureInfo.InvariantCulture);
+                transaction.Value = NormalizeCurrencyDouble(csv.GetField("VALOR")!);
+                transaction.Tax = string.IsNullOrEmpty(csv.GetField("IMPOSTO")!) ? 0 : NormalizeCurrencyDouble(csv.GetField("IMPOSTO")!);
+                transaction.Quotation = NormalizeCurrencyDouble(csv.GetField("COTAÇÃO")!);
+                transaction.Sold = csv.GetField("TIPO")!.ToUpper().Equals("VENDA") || csv.GetField("VENDIDO")!.ToUpper().Equals("TRUE");
+                transaction.Bank = csv.GetField("CORRETORA")!.ToUpper();
+                transaction.CreatedAt = DateTime.Now;
+                transaction.UpdatedAt = DateTime.Now;
+
+                string? repeatedTransaction = await context.Transactions.Find( x
+                    => x.IdCrypto == transaction.IdCrypto 
+                    && x.Bank == transaction.Bank
+                    && x.Value == transaction.Value
+                    && x.Quotation == transaction.Quotation
+                    && x.Date.Date == transaction.Date.Date
+                    && x.Sold == transaction.Sold
+                    && x.Tax == transaction.Tax
+                    && x.Type == transaction.Type
+                )
+                .Project(x => x.Id)
+                .FirstOrDefaultAsync();
+
+                if(repeatedTransaction is null)
+                    transactions.Add(transaction);
+
+            }
+
+            // while (!reader.EndOfStream)
+            // {    
+            //     var values = reader.ReadLine().Split(',');
+            //     if(string.IsNullOrEmpty(values[0]))
+            //         continue;
+
+            //     string? idCrypto = await context.Cryptos
+            //         .Find(x => !x.Deleted && x.Description.ToUpper().Equals(values[0].ToUpper()))
+            //         .Project(x => x.Id)
+            //         .FirstOrDefaultAsync();
+                
+            //     if(idCrypto is null)
+            //     {
+            //         Crypto crypto = new()
+            //         {
+            //             Description = values[0],
+            //             CreatedAt = DateTime.Now,
+            //             UpdatedAt = DateTime.Now
+            //         };
+
+            //         await context.Cryptos.InsertOneAsync(crypto);
+            //         idCrypto = crypto.Id;
+            //     }
+
+            //     Transaction transaction = new();
+            //     transaction.IdCrypto = idCrypto;
+            //     transaction.Type = values[1].ToUpper().Equals("COMPRA") ? "PURCHASE" : "SALE";
+            //     transaction.Date = DateTime.ParseExact(values[2], "dd/MM/yyyy", CultureInfo.InvariantCulture);
+            //     transaction.Value = NormalizeCurrencyDouble(values[3]);
+            //     transaction.Tax = string.IsNullOrEmpty(values[4]) ? 0 : NormalizeCurrencyDouble(values[4]);
+            //     transaction.Quotation = NormalizeCurrencyDouble(values[5]);
+            //     transaction.Sold = values[1].ToUpper().Equals("VENDA") || values[8].ToUpper().Equals("TRUE");
+            //     transaction.Bank = values[9].ToUpper();
+            //     transaction.CreatedAt = DateTime.Now;
+            //     transaction.UpdatedAt = DateTime.Now;
+            //     // {
+            //     //     IdCrypto = idCrypto,
+            //     //     Type = values[1].ToUpper().Equals("COMPRA") ? "PURCHASE" : "SALE",
+            //     //     Date = DateTime.ParseExact(values[2], "dd/MM/yyyy", CultureInfo.InvariantCulture),
+            //     //     Value = NormalizeCurrencyDouble(values[3]),
+            //     //     Tax = string.IsNullOrEmpty(values[4]) ? 0 : NormalizeCurrencyDouble(values[4]),
+            //     //     Quotation = NormalizeCurrencyDouble(values[5]),
+            //     //     Sold = values[1].ToUpper().Equals("VENDA") || values[8].ToUpper().Equals("TRUE"),
+            //     //     Bank = values[9].ToUpper(),
+            //     //     CreatedAt = DateTime.Now,
+            //     //     UpdatedAt = DateTime.Now,
+            //     // };
+
+            //     string? repeatedTransaction = await context.Transactions.Find( x
+            //             => x.IdCrypto == transaction.IdCrypto 
+            //             && x.Bank == transaction.Bank
+            //             && x.Value == transaction.Value
+            //             && x.Quotation == transaction.Quotation
+            //             && x.Date.Date == transaction.Date.Date
+            //             && x.Sold == transaction.Sold
+            //             && x.Tax == transaction.Tax
+            //             && x.Type == transaction.Type
+            //         )
+            //         .Project(x => x.Id)
+            //         .FirstOrDefaultAsync();
+
+            //     if(repeatedTransaction is null)
+            //         transactions.Add(transaction);
+            // }
+
+            await context.Transactions.InsertManyAsync(transactions);
+
+            return new Response(201, "Movimentações inseridas com sucesso").Result;
+        }
+        catch (Exception ex)
+        {
+            return new Response(500, $"Falha ao importar movimentações: {ex.Message}").Result;
+        }
+    }
+
+    private static double NormalizeCurrencyDouble(string value)
+    {
+        string justNumbers = Regex.Replace(value, @"[^\d,\.]", "");
+        return double.Parse(justNumbers, new CultureInfo("pt-BR"));
     }
 }
