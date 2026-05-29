@@ -214,7 +214,7 @@ public class TransactionController :IEndpoint
                     && x.Bank == transaction.Bank
                     && x.Value == transaction.Value
                     && x.Quotation == transaction.Quotation
-                    && x.Date.Date == transaction.Date.Date
+                    && x.Date > transaction.Date.Date.AddDays(-1) && x.Date < transaction.Date.AddDays(1)
                     && x.Sold == transaction.Sold
                     && x.Tax == transaction.Tax
                     && x.Type == transaction.Type
@@ -227,72 +227,8 @@ public class TransactionController :IEndpoint
 
             }
 
-            // while (!reader.EndOfStream)
-            // {    
-            //     var values = reader.ReadLine().Split(',');
-            //     if(string.IsNullOrEmpty(values[0]))
-            //         continue;
-
-            //     string? idCrypto = await context.Cryptos
-            //         .Find(x => !x.Deleted && x.Description.ToUpper().Equals(values[0].ToUpper()))
-            //         .Project(x => x.Id)
-            //         .FirstOrDefaultAsync();
-                
-            //     if(idCrypto is null)
-            //     {
-            //         Crypto crypto = new()
-            //         {
-            //             Description = values[0],
-            //             CreatedAt = DateTime.Now,
-            //             UpdatedAt = DateTime.Now
-            //         };
-
-            //         await context.Cryptos.InsertOneAsync(crypto);
-            //         idCrypto = crypto.Id;
-            //     }
-
-            //     Transaction transaction = new();
-            //     transaction.IdCrypto = idCrypto;
-            //     transaction.Type = values[1].ToUpper().Equals("COMPRA") ? "PURCHASE" : "SALE";
-            //     transaction.Date = DateTime.ParseExact(values[2], "dd/MM/yyyy", CultureInfo.InvariantCulture);
-            //     transaction.Value = NormalizeCurrencyDouble(values[3]);
-            //     transaction.Tax = string.IsNullOrEmpty(values[4]) ? 0 : NormalizeCurrencyDouble(values[4]);
-            //     transaction.Quotation = NormalizeCurrencyDouble(values[5]);
-            //     transaction.Sold = values[1].ToUpper().Equals("VENDA") || values[8].ToUpper().Equals("TRUE");
-            //     transaction.Bank = values[9].ToUpper();
-            //     transaction.CreatedAt = DateTime.Now;
-            //     transaction.UpdatedAt = DateTime.Now;
-            //     // {
-            //     //     IdCrypto = idCrypto,
-            //     //     Type = values[1].ToUpper().Equals("COMPRA") ? "PURCHASE" : "SALE",
-            //     //     Date = DateTime.ParseExact(values[2], "dd/MM/yyyy", CultureInfo.InvariantCulture),
-            //     //     Value = NormalizeCurrencyDouble(values[3]),
-            //     //     Tax = string.IsNullOrEmpty(values[4]) ? 0 : NormalizeCurrencyDouble(values[4]),
-            //     //     Quotation = NormalizeCurrencyDouble(values[5]),
-            //     //     Sold = values[1].ToUpper().Equals("VENDA") || values[8].ToUpper().Equals("TRUE"),
-            //     //     Bank = values[9].ToUpper(),
-            //     //     CreatedAt = DateTime.Now,
-            //     //     UpdatedAt = DateTime.Now,
-            //     // };
-
-            //     string? repeatedTransaction = await context.Transactions.Find( x
-            //             => x.IdCrypto == transaction.IdCrypto 
-            //             && x.Bank == transaction.Bank
-            //             && x.Value == transaction.Value
-            //             && x.Quotation == transaction.Quotation
-            //             && x.Date.Date == transaction.Date.Date
-            //             && x.Sold == transaction.Sold
-            //             && x.Tax == transaction.Tax
-            //             && x.Type == transaction.Type
-            //         )
-            //         .Project(x => x.Id)
-            //         .FirstOrDefaultAsync();
-
-            //     if(repeatedTransaction is null)
-            //         transactions.Add(transaction);
-            // }
-
-            await context.Transactions.InsertManyAsync(transactions);
+            if(transactions.Count > 0)
+                await context.Transactions.InsertManyAsync(transactions);
 
             return new Response(201, "Movimentações inseridas com sucesso").Result;
         }
