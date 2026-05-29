@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Reflection;
 using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Driver;
 
 namespace PerInvest_API.src.Helpers;
@@ -108,7 +109,8 @@ public class Pagination<TModel>
                 }
 
             }
-            else if (propInfo.PropertyType == typeof(string) && !propInfo.Name.ToLower().Equals("id")){
+            else if (propInfo.PropertyType == typeof(string) && convertedValue.GetType() != typeof(ObjectId))
+            {
                 filters.Add(builder.Regex(linqKey, new BsonRegularExpression($"{convertedValue}", "i")));
                 BsonFilter["$match"].AsBsonDocument.Add(key, new BsonDocument{
                     {"$regex", BsonValue.Create(convertedValue)},
@@ -117,6 +119,8 @@ public class Pagination<TModel>
             }
             else
             {
+                if(key.ToLower().Equals("id"))
+                    key = "_id";
                 filters.Add(builder.Eq(linqKey, convertedValue));
                 BsonFilter["$match"].AsBsonDocument.Add(key, BsonValue.Create(convertedValue));
             }
@@ -145,9 +149,8 @@ public class Pagination<TModel>
     {
         try
         {
-
             Type targetType = propInfo.PropertyType;
-            if (propInfo.Name.ToLower().Equals("id")) return new ObjectId(value);
+            if (IsObjectId(propInfo)) return new ObjectId(value);
 
             if (targetType == typeof(string)) return value.ToLower();
 
@@ -183,4 +186,8 @@ public class Pagination<TModel>
         }
     }
 
+    private static bool IsObjectId(PropertyInfo propInfo){
+        var bsonRepresentationAttr = propInfo.GetCustomAttribute<BsonRepresentationAttribute>();
+        return bsonRepresentationAttr != null && bsonRepresentationAttr.Representation == BsonType.ObjectId;
+    }
 }
