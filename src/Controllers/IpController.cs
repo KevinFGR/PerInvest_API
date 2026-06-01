@@ -14,7 +14,8 @@ public class IpController :IEndpoint
             using HttpClient httpClient = new();
             dynamic data = new
             {
-                ip = await httpClient.GetStringAsync("https://api.ipify.org")
+                // ip = await httpClient.GetStringAsync("https://api.ipify.org")
+                ip = "localhost:5000 kkkkkkkkk"
             };
             return new { success = true, data };
         }
