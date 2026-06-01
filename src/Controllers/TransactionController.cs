@@ -199,7 +199,7 @@ public class TransactionController :IEndpoint
 
                 Transaction transaction = new();
                 transaction.IdCrypto = idCrypto;
-                transaction.Type = csv.GetField("TIPO")!.ToUpper().Equals("COMPRA") ? "PURCHASE" : "SALE";
+                transaction.Type = csv.GetField("TIPO")!.ToUpper().Equals("COMPRA") ? "purchase" : "sale";
                 transaction.Date = DateTime.ParseExact(csv.GetField("DATA")!, "dd/MM/yyyy", CultureInfo.InvariantCulture);
                 transaction.Value = NormalizeCurrencyDouble(csv.GetField("VALOR")!);
                 transaction.Tax = string.IsNullOrEmpty(csv.GetField("IMPOSTO")!) ? 0 : NormalizeCurrencyDouble(csv.GetField("IMPOSTO")!);
