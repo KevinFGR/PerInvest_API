@@ -189,10 +189,13 @@ public class CryptoController :IEndpoint
                 return new Response(new { prices = new List<object>(), totalVolumes = new List<object>()}).Result;
 
             BsonDocument bsonResult = BsonDocument.Parse(apiResult!.Data);
-            List<object> prices = BsonSerializer.Deserialize<List<object>>(bsonResult["prices"].ToJson());
+            List<dynamic> prices = BsonSerializer.Deserialize<List<dynamic>>(bsonResult["prices"].ToJson());
             List<object> volumes = BsonSerializer.Deserialize<List<object>>(bsonResult["total_volumes"].ToJson());
 
-            return new Response(new{prices, volumes}).Result;
+            var higherPrice = prices.Select(x => Convert.ToDouble(x[1])).Max();
+            var lowestPrice = prices.Select(x => Convert.ToDouble(x[1])).Min();
+
+            return new Response(new{higherPrice, lowestPrice, prices, volumes}).Result;
         }
         catch (Exception ex)
         {
