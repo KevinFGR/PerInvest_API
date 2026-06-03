@@ -192,10 +192,14 @@ public class CryptoController :IEndpoint
             List<dynamic> prices = BsonSerializer.Deserialize<List<dynamic>>(bsonResult["prices"].ToJson());
             List<object> volumes = BsonSerializer.Deserialize<List<object>>(bsonResult["total_volumes"].ToJson());
 
-            var higherPrice = prices.Select(x => Convert.ToDouble(x[1])).Max();
-            var lowestPrice = prices.Select(x => Convert.ToDouble(x[1])).Min();
+            double higherPrice = prices.Select(x => Convert.ToDouble(x[1])).Max();
+            double lowestPrice = prices.Select(x => Convert.ToDouble(x[1])).Min();
+            
+            double firstPrice = prices.Select(x => Convert.ToDouble(x[1])).First();
+            double lastPrice = prices.Select(x => Convert.ToDouble(x[1])).Last();
+            double variation = ((lastPrice- firstPrice) / firstPrice) * 100;
 
-            return new Response(new{higherPrice, lowestPrice, prices, volumes}).Result;
+            return new Response(new{higherPrice, lowestPrice, variation, prices, volumes}).Result;
         }
         catch (Exception ex)
         {
