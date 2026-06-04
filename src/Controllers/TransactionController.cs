@@ -25,6 +25,7 @@ public class TransactionController :IEndpoint
         app.MapGet("/{id}", GetById).RequireAuthorization();
         app.MapPost("/", Add).RequireAuthorization().WithDataAnnotation<CreateTransactionDto>();
         app.MapPut("/", Update).RequireAuthorization().WithDataAnnotation<UpdateTransactionDto>();
+        app.MapPut("/set-as-sold/{id}", SetAsSold).RequireAuthorization();
         app.MapDelete("/{id}", Delete).RequireAuthorization();
         app.MapPost("/import", ImportTransactions).DisableAntiforgery().RequireAuthorization();
     }
@@ -129,6 +130,24 @@ public class TransactionController :IEndpoint
             return new Response(200).Result;
         }
         catch(Exception ex)
+        {
+            return new Response(500, $"Falha ao atualizar movimentação: {ex.Message}").Result;
+        }
+    }
+
+    public static async Task<IResult> SetAsSold(AppDbContext context, string id)
+    {
+        try
+        {
+            Expression<Func<Transaction, bool>> filter = x => x.Id == id && !x.Deleted;
+            var update = Builders<Transaction>.Update
+                .Set(x => x.Sold, true)
+                .Set(x=> x.UpdatedAt, DateTime.Now);
+            await context.Transactions.UpdateOneAsync(filter, update);
+
+            return new Response(200).Result;
+        }
+        catch (Exception ex)
         {
             return new Response(500, $"Falha ao atualizar movimentação: {ex.Message}").Result;
         }
