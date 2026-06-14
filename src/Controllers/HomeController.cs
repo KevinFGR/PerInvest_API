@@ -20,31 +20,10 @@ public class HomeController :IEndpoint
         try
         {
             List<dynamic> cryptosPrice = await GetAllCryptoPrice(context, httpClientFactory);
-            List<dynamic> cheepestOperation = await GetCheepestPurchase(context);
+            List<dynamic> cheepestPurchase = await GetCheepestPurchase(context, cryptosPrice);
+            List<dynamic> totalCryptoPurchased = await GetTotalCryptoPurchased(context, cheepestPurchase);
 
-            cheepestOperation = cheepestOperation.Select(x => {
-                dynamic? currentCrypto = cryptosPrice.Where(y => y.apiIndex == x.apiIndex).FirstOrDefault();
-                double? valorization = currentCrypto == null ? null : (currentCrypto.value / x.quotation) - 1;
-                double? quotationNow = currentCrypto?.value ?? null;
-                double? valueNow = currentCrypto == null ? null : x.value + (x.value * valorization);
-
-                return new
-                {
-                    x.idCrypto,
-                    x.value,
-                    x.description,
-                    x.quotation,
-                    quotationNow,
-                    valorization = valorization == null ? null : valorization*100,
-                    valueNow,
-                    x.color
-                } as dynamic;
-            }).ToList();
-
-            return new Response(new {
-                cryptosPrice,
-                cheepestOperation
-            }).Result;
+            return new Response(totalCryptoPurchased).Result;
         }
         catch (Exception ex)
         {
@@ -52,7 +31,7 @@ public class HomeController :IEndpoint
         }
     }
 
-    public static async Task<List<dynamic>> GetCheepestPurchase(AppDbContext context)
+    public static async Task<List<dynamic>> GetCheepestPurchase(AppDbContext context, List<dynamic> cryptosPrice)
     {
         BsonDocument[] pipeline = [
             new ("$match", new BsonDocument{
@@ -82,17 +61,34 @@ public class HomeController :IEndpoint
                 {"_id", 0},
                 {"value", 1},
                 {"quotation", 1},
-                {"description", new BsonDocument("$first", "$crypto.description")},
+                {"date", 1},
+                {"bank", 1},
                 {"apiIndex", new BsonDocument("$first", "$crypto.apiIndex")},
                 {"idCrypto", MongoHelper.ToStringFirst("$crypto._id")},
-                {"color", new BsonDocument("$first", "$crypto.color")}
             }),
-
-            new("$sort", new BsonDocument("description", 1)),
         ];
 
         var data = await context.Transactions.Aggregate<BsonDocument>(pipeline).ToListAsync();
-        return data.ToDynamic();
+        List<dynamic> cheepestPurchase = data.ToDynamic();
+
+        return cheepestPurchase.Select(x => {
+            dynamic? currentCrypto = cryptosPrice.Where(y => y.apiIndex == x.apiIndex).FirstOrDefault();
+            double? valorization = currentCrypto == null ? null : (currentCrypto.value / x.quotation) - 1;
+            double? quotationNow = currentCrypto?.value ?? null;
+            double? valueNow = currentCrypto == null ? null : x.value + (x.value * valorization);
+
+            return new
+            {
+                x.idCrypto,
+                x.value,
+                x.quotation,
+                quotationNow,
+                valorization = valorization == null ? null : valorization*100,
+                valueNow,
+                x.date,
+                x.bank,
+            } as dynamic;
+        }).ToList();
     }
 
     public static async Task<List<dynamic>> GetAllCryptoPrice(AppDbContext context, IHttpClientFactory httpClientFactory)
@@ -129,4 +125,67 @@ public class HomeController :IEndpoint
         return response;
     }
 
+    public static async Task<List<dynamic>> GetTotalCryptoPurchased(AppDbContext context, List<dynamic> cheepestPurchases)
+    {
+        BsonDocument[] pipeline = [
+            new ("$match", new BsonDocument{
+                {"deleted", false},
+                {"type", "purchase"},
+                {"sold", false},
+            }),
+            new ("$group", new BsonDocument{
+                {"_id", "$idCrypto"},
+                {"transactions", new BsonDocument("$push", new BsonDocument{
+                    {"value", new BsonDocument("$subtract", new BsonArray{"$value", "$tax"})},
+                    {"quotation", "$quotation"}
+                })}
+            }),
+
+            MongoHelper.Lookup("cryptos", "crypto", [
+                ["$_id", "$_id"],
+                [false, "$deleted"]
+            ], 1),
+
+            new ("$project", new BsonDocument{
+                {"idCrypto", MongoHelper.ToString("$_id")},
+                {"transactions", 1},
+                {"description", MongoHelper.First("$crypto.description")},
+                {"color", MongoHelper.First("$crypto.color")},
+                {"_id", 0},
+            })
+        ];
+
+        List<dynamic> result = await context.Transactions.Aggregate<dynamic>(pipeline).ToListAsync();
+
+        return result.Select(x => {
+            List<dynamic> transactions = x.transactions;
+            dynamic? cheepestPurchase = cheepestPurchases.FirstOrDefault(y => y.idCrypto == x.idCrypto);
+            double quotationNow = cheepestPurchase == null ? 0 : cheepestPurchase.quotationNow ?? 0;
+            double totalNow = 0;
+            double totalPurchased = 0;
+            foreach(var transaction in transactions){
+                totalNow += quotationNow * (transaction.value / transaction.quotation);
+                totalPurchased += transaction.value;
+            }
+            return new { 
+                x.idCrypto,
+                x.description,
+                x.color,
+                totalPurchased,
+                quotationNow,
+                totalNow,
+                valorization = quotationNow == 0 ? 0 : ((totalNow / totalPurchased) - 1) * 100,
+                cheepestPurchase = cheepestPurchase == null ? null : new { 
+                    cheepestPurchase.value,
+                    cheepestPurchase.quotation,
+                    cheepestPurchase.valorization,
+                    cheepestPurchase.valueNow,
+                    cheepestPurchase.date,
+                    cheepestPurchase.bank,
+                }
+            } as dynamic;
+        })
+        .OrderByDescending(x => x.totalPurchased)
+        .ToList();
+    }
 }
