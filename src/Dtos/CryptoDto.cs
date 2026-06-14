@@ -14,6 +14,8 @@ public class CreateCryptoDto : RequestBase
     public string Color { get; set; } = string.Empty;
 
     public string ApiIndex { get; set; } = string.Empty;
+    
+    public string ApiIndex2 { get; set; } = string.Empty;
 }
 
 public class UpdateCryptoDto : CreateCryptoDto

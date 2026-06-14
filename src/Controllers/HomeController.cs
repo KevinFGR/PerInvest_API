@@ -5,6 +5,7 @@ using PerInvest_API.src.Helpers;
 using MongoDB.Driver.Linq;
 using MongoDB.Bson;
 using System.Globalization;
+using MongoDB.Bson.Serialization;
 
 namespace PerInvest_API.src.Controllers;
 
@@ -72,7 +73,7 @@ public class HomeController :IEndpoint
         List<dynamic> cheepestPurchase = data.ToDynamic();
 
         return cheepestPurchase.Select(x => {
-            dynamic? currentCrypto = cryptosPrice.Where(y => y.apiIndex == x.apiIndex).FirstOrDefault();
+            dynamic? currentCrypto = cryptosPrice.Where(y => y.idCrypto == x.idCrypto).FirstOrDefault();
             double? valorization = currentCrypto == null ? null : (currentCrypto.value / x.quotation) - 1;
             double? quotationNow = currentCrypto?.value ?? null;
             double? valueNow = currentCrypto == null ? null : x.value + (x.value * valorization);
@@ -98,27 +99,40 @@ public class HomeController :IEndpoint
             .Project(x => new{
                 x.Id,
                 x.ApiIndex,
-                x.Description,
-                x.Color
+                x.ApiIndex2,
             })
             .ToListAsync();
 
         string cryptosForUrn = string.Join(",", cryptos.Select(x => x.ApiIndex));
-
         Response apiResult = await HelperHttp.GetString(httpClientFactory, $"https://api.coingecko.com/api/v3/simple/price?ids={cryptosForUrn}&vs_currencies=usd,brl");
+        BsonDocument planB = [];
         if(!apiResult.Success)
-            return [];
+        {
+            Response apiResult2 = await HelperHttp.GetString(httpClientFactory, $"https://api.binance.com/api/v3/ticker/price");
+            if(!apiResult2.Success)
+                return [];
 
-        BsonDocument bsonResult = BsonDocument.Parse(apiResult.Data);
+            BsonArray bsonResult2 = BsonSerializer.Deserialize<BsonArray>(apiResult2.Data);
+            foreach(var crypto in cryptos)
+            {
+                BsonDocument? objectQuotation = bsonResult2.OfType<BsonDocument>()
+                    .FirstOrDefault(x 
+                        => x.Contains("symbol") 
+                        && string.Equals( x["symbol"].AsString, crypto.ApiIndex2, StringComparison.OrdinalIgnoreCase));
+                
+                if(objectQuotation is not null)
+                    planB[crypto.ApiIndex] = new BsonDocument("brl", objectQuotation["price"].AsString);
+            }   
+        }
+
+        BsonDocument bsonResult = apiResult.Success ? BsonDocument.Parse(apiResult.Data) : planB;
         List<dynamic> response = bsonResult.Elements.Select(prop => {
             var currentCrypto = cryptos.Where(x => x.ApiIndex == prop.Name).FirstOrDefault();
             return new
             {
                 idCrypto = currentCrypto?.Id ?? "",
-                description = currentCrypto?.Description ?? "",
                 apiIndex = prop.Name,
                 value = Convert.ToDouble(prop.Value["brl"].ToString(), CultureInfo.InvariantCulture),
-                color = currentCrypto?.Color ?? ""
             } as dynamic;
         }).ToList();
 
