@@ -104,10 +104,10 @@ public class HomeController :IEndpoint
             .ToListAsync();
 
         string cryptosForUrn = string.Join(",", cryptos.Select(x => x.ApiIndex));
-        Response apiResult = await HelperHttp.GetString(httpClientFactory, $"https://api.coingecko.com/api/v3/simple/price?ids={cryptosForUrn}&vs_currencies=usd,brl");
+        // Response apiResult = await HelperHttp.GetString(httpClientFactory, $"https://api.coingecko.com/api/v3/simple/price?ids={cryptosForUrn}&vs_currencies=usd,brl");
         BsonDocument planB = [];
-        if(!apiResult.Success)
-        {
+        // if(!apiResult.Success)
+        // {
             Response apiResult2 = await HelperHttp.GetString(httpClientFactory, $"https://api.binance.com/api/v3/ticker/price");
             if(!apiResult2.Success)
                 return [];
@@ -123,9 +123,10 @@ public class HomeController :IEndpoint
                 if(objectQuotation is not null)
                     planB[crypto.ApiIndex] = new BsonDocument("brl", objectQuotation["price"].AsString);
             }   
-        }
+        // }
 
-        BsonDocument bsonResult = apiResult.Success ? BsonDocument.Parse(apiResult.Data) : planB;
+        // BsonDocument bsonResult = apiResult.Success ? BsonDocument.Parse(apiResult.Data) : planB;
+        BsonDocument bsonResult = planB;
         List<dynamic> response = bsonResult.Elements.Select(prop => {
             var currentCrypto = cryptos.Where(x => x.ApiIndex == prop.Name).FirstOrDefault();
             return new
