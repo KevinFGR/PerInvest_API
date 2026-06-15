@@ -178,9 +178,7 @@ public class TransactionController :IEndpoint
         try
         {
             if (csvFile == null || csvFile.Length == 0)
-            {
                 return new Response(400, "Envie o arquivo").Result;
-            }
 
             List<Transaction> transactions = [];
             using var stream = csvFile.OpenReadStream();
@@ -228,28 +226,34 @@ public class TransactionController :IEndpoint
                 transaction.CreatedAt = DateTime.Now;
                 transaction.UpdatedAt = DateTime.Now;
 
-                string? repeatedTransaction = await context.Transactions.Find( x
+                Transaction? repeatedTransaction = await context.Transactions.Find( x
                     => x.IdCrypto == transaction.IdCrypto 
                     && x.Bank == transaction.Bank
                     && x.Value == transaction.Value
                     && x.Quotation == transaction.Quotation
                     && x.Date > transaction.Date.Date.AddDays(-1) && x.Date < transaction.Date.AddDays(1)
-                    && x.Sold == transaction.Sold
                     && x.Tax == transaction.Tax
                     && x.Type == transaction.Type
+                    && !x.Deleted
                 )
-                .Project(x => x.Id)
                 .FirstOrDefaultAsync();
 
-                if(repeatedTransaction is null)
+                if(repeatedTransaction is not null && repeatedTransaction.Sold != transaction.Sold)
+                {
+                    repeatedTransaction.Sold = transaction.Sold;
+                    repeatedTransaction.UpdatedAt = DateTime.Now;
+                    Expression<Func<Transaction, bool>> filter = x => !x.Deleted && x.Id == repeatedTransaction.Id;
+                    await context.Transactions.ReplaceOneAsync(filter, repeatedTransaction);
+                }else if(repeatedTransaction is null)
+                {
                     transactions.Add(transaction);
-
+                }
             }
 
             if(transactions.Count > 0)
                 await context.Transactions.InsertManyAsync(transactions);
 
-            return new Response(201, "Movimentações inseridas com sucesso").Result;
+            return new Response(201, $"{transactions.Count} Movimentações inseridas com sucesso").Result;
         }
         catch (Exception ex)
         {
