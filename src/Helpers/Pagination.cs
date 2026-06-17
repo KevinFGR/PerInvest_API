@@ -135,14 +135,14 @@ public class Pagination<TModel>
     private void BuildSort(IQueryCollection query)
     {
         SortDefinitionBuilder<TModel> builder = Builders<TModel>.Sort;
-        Order = query.ContainsKey("sort") ? query["sort"].ToString() : "createdAt";
-        SortString = query.ContainsKey("order") ? query["order"].ToString().ToLower() : "asc";
+        SortString = query.ContainsKey("sort") ? query["sort"].ToString() : "createdAt";
+        Order = query.ContainsKey("order") ? query["order"].ToString().ToLower() : "asc";
 
-        Sort = SortString == "desc"
-            ? builder.Descending(Order.FirstCharToUpper())
-            : builder.Ascending(Order.FirstCharToUpper());
+        Sort = Order == "desc"
+            ? builder.Descending(SortString.FirstCharToUpper())
+            : builder.Ascending(SortString.FirstCharToUpper());
 
-        BsonSort = new("$sort", new BsonDocument($"{Order}", SortString == "desc" ? -1 : 1));
+        BsonSort = new("$sort", new BsonDocument($"{SortString}", Order == "desc" ? -1 : 1));
     }
 
     private static object? ConvertValue(string value, PropertyInfo propInfo)
