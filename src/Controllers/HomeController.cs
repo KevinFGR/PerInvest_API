@@ -95,7 +95,7 @@ public class HomeController :IEndpoint
     public static async Task<List<dynamic>> GetAllCryptoPrice(AppDbContext context, IHttpClientFactory httpClientFactory)
     {
         var cryptos = await context.Cryptos
-            .Find(x => !x.Deleted && !string.IsNullOrEmpty(x.ApiIndex))
+            .Find(x => !x.Deleted)
             .Project(x => new{
                 x.Id,
                 x.ApiIndex,
@@ -108,21 +108,33 @@ public class HomeController :IEndpoint
         BsonDocument planB = [];
         // if(!apiResult.Success)
         // {
-            Response apiResult2 = await HelperHttp.GetString(httpClientFactory, $"https://api.binance.com/api/v3/ticker/price");
-            if(!apiResult2.Success)
-                return [];
+        Response apiResult2 = await HelperHttp.GetString(httpClientFactory, $"https://api.mexc.com/api/v3/ticker/price");
+        if(!apiResult2.Success)
+            return [];
 
-            BsonArray bsonResult2 = BsonSerializer.Deserialize<BsonArray>(apiResult2.Data);
-            foreach(var crypto in cryptos)
-            {
-                BsonDocument? objectQuotation = bsonResult2.OfType<BsonDocument>()
-                    .FirstOrDefault(x 
-                        => x.Contains("symbol") 
-                        && string.Equals( x["symbol"].AsString, crypto.ApiIndex2, StringComparison.OrdinalIgnoreCase));
-                
-                if(objectQuotation is not null)
-                    planB[crypto.ApiIndex] = new BsonDocument("brl", objectQuotation["price"].AsString);
-            }   
+        BsonArray bsonResult2 = BsonSerializer.Deserialize<BsonArray>(apiResult2.Data);
+        BsonDocument? objectUSDC = bsonResult2.OfType<BsonDocument>().FirstOrDefault(x 
+            => x.Contains("symbol") 
+            && string.Equals( x["symbol"].AsString, "USDCBRL", StringComparison.OrdinalIgnoreCase
+        ));
+        double USDCQuotation = objectUSDC is null ? 0 : Convert.ToDouble(objectUSDC["price"].AsString);
+
+        foreach(var crypto in cryptos)
+        {
+            BsonDocument? objectQuotation = bsonResult2.OfType<BsonDocument>()
+                .FirstOrDefault(x 
+                    => x.Contains("symbol") 
+                    && string.Equals( x["symbol"].AsString, crypto.ApiIndex2, StringComparison.OrdinalIgnoreCase));
+            
+            if(objectQuotation is null)
+                continue;
+
+            string price = objectQuotation["price"].AsString;
+            if(crypto.ApiIndex2.Contains("USD"))
+                price = $"{Convert.ToDouble(price) * USDCQuotation}";
+            
+            planB[crypto.ApiIndex] = new BsonDocument("brl", price);
+        }   
         // }
 
         // BsonDocument bsonResult = apiResult.Success ? BsonDocument.Parse(apiResult.Data) : planB;
