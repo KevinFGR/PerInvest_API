@@ -8,6 +8,7 @@ using Microsoft.IdentityModel.Tokens;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using PerInvest_API.src.Models.Users;
+using Tesseract;
 
 namespace PerInvest_API.src.Helpers;
 
@@ -113,7 +114,7 @@ public static class HelperPerInvest
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-        public static (string Salt, string Hash) GenerateHash(string password)
+    public static (string Salt, string Hash) GenerateHash(string password)
     {
         byte[] saltBytes = RandomNumberGenerator.GetBytes(16);
 
@@ -139,5 +140,21 @@ public static class HelperPerInvest
         string computedHashBase64 = Convert.ToBase64String(computedHash);
 
         return computedHashBase64 == hash;
+    }
+
+    public static async Task<string> GetTextFromImage(IFormFile image)
+    {
+        using var memoryStream = new MemoryStream();
+        await image.CopyToAsync(memoryStream);
+
+        var bytes = memoryStream.ToArray();
+
+        var tessDataPath = Path.Combine( Directory.GetCurrentDirectory(), "src", "Helpers", "TessData");
+
+        using var engine = new TesseractEngine( tessDataPath, "por", EngineMode.Default);
+        using var pix = Pix.LoadFromMemory(bytes);
+        using var page = engine.Process(pix);
+
+        return page.GetText();
     }
 }

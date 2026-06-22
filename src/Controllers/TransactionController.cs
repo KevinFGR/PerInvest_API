@@ -14,6 +14,7 @@ using System.Globalization;
 using System.Text.RegularExpressions;
 using CsvHelper.Configuration;
 using CsvHelper;
+using Tesseract;
 
 namespace PerInvest_API.src.Controllers;
 
@@ -28,6 +29,7 @@ public class TransactionController :IEndpoint
         app.MapPut("/set-as-sold/{id}", SetAsSold).RequireAuthorization();
         app.MapDelete("/{id}", Delete).RequireAuthorization();
         app.MapPost("/import", ImportTransactions).DisableAntiforgery().RequireAuthorization();
+        app.MapPost("/import-from-image", ImportFromImage).DisableAntiforgery().RequireAuthorization();
     }
 
     public static async Task<IResult> Get(AppDbContext context, HttpContext httpContext)
@@ -261,9 +263,147 @@ public class TransactionController :IEndpoint
         }
     }
 
+    public static async Task<IResult> ImportFromImage(AppDbContext context, IFormFile? image)
+    {
+        try 
+        { 
+            if (image == null || image.Length == 0)
+                return new Response(400, "Nenhuma imagem enviada.").Result;
+
+            string text = (await HelperPerInvest.GetTextFromImage(image)).ToLower();
+
+            // return new Response(200, text).Result;
+
+            string type = text.Contains("venda foi realizada com sucesso") ? "sale" : "";
+            type = text.Contains("compra foi realizada com sucesso") ? "purchase" : type;
+            if(type == "")
+                return new Response(400, "Falha ao ler informações. Não foi possível distinguir se é uma compra ou venda").Result;
+
+            double? quotation = GetQuotationFromText(text, type);
+            if(quotation is null)
+                return new Response(400, "Cotação não encontrada").Result;
+
+            double? value = GetValueFromText(text, type);
+            if(value is null)
+                return new Response(400, "Valor não encontrado").Result;
+
+            double? tax = GetTaxFromText(text);
+            if(tax is null)
+                return new Response(400, "Valor de imposto não encontrado").Result;
+
+            DateTime? date = GetDateFromText(text);
+            if(date is null)
+                return new Response(400, "Data da operação não encontrada").Result;
+
+            string crypto = GetCryptoNameFromText(text);
+            if(string.IsNullOrEmpty(crypto))
+                return new Response(400, "Nome da Crypto Moeda não encontrado").Result;
+
+            string? idCrypto = await context.Cryptos
+                .Find(x => x.Description.ToLower().Equals(crypto))
+                .Project(x => x.Id)
+                .FirstOrDefaultAsync();
+            if(string.IsNullOrEmpty(idCrypto))
+                return new Response(400, $"Crypto Moeda {crypto} não cadastrada").Result;
+            
+            Transaction transaction = new()
+            {
+                IdCrypto = idCrypto,
+                Type = type,
+                Quotation = quotation.Value,
+                Value = value.Value + tax.Value,
+                Tax = tax.Value,
+                Date = date.Value,
+                Sold = false,
+                Bank = "PICPAY",
+                CreatedAt = DateTime.Now,
+                UpdatedAt = DateTime.Now
+            };
+
+            string? transactionAlreadyExists = await context.Transactions.Find(x =>
+                    x.IdCrypto == transaction.IdCrypto && 
+                    x.Type == transaction.Type && 
+                    x.Value == transaction.Value && 
+                    x.Tax == transaction.Tax && 
+                    x.Quotation == transaction.Quotation && 
+                    x.Date > transaction.Date.Date.AddDays(-1) && x.Date < transaction.Date.AddDays(1) && 
+                    x.Bank == transaction.Bank
+                )
+                .Project(x => x.Id)
+                .FirstOrDefaultAsync();
+            if(transactionAlreadyExists is not null)
+                return new Response(400, $"Operação já cadastrada").Result;
+
+            await context.Transactions.InsertOneAsync(transaction);
+
+            return new Response(201, "Operação cadastrada com sucesso").Result;
+        } 
+        catch (Exception ex)
+        {
+            return new Response(400, $"Falha ao importar operação a partir de imagem: {ex.Message}").Result;
+        }
+    }
+
+    #region HELPERS
     private static double NormalizeCurrencyDouble(string value)
     {
         string justNumbers = Regex.Replace(value, @"[^\d,\.]", "");
         return double.Parse(justNumbers, new CultureInfo("pt-BR"));
     }
+
+    private static string GetCryptoNameFromText(string text)
+    {
+        string crypto = "";
+        var match = Regex.Match( text, @"moeda\s+([^\r\n]+)", RegexOptions.IgnoreCase);
+        if (match.Success)
+            crypto = Regex.Replace( match.Groups[1].Value, @"\s*\(.*?\)", "").Trim();
+
+        return crypto;
+    }
+
+    private static double? GetQuotationFromText(string text, string type)
+    {
+        string regexType = type.ToLower().Equals("purchase") ? "compra" : "venda";
+        var match = Regex.Match(text,
+            @$"cotação\s+de\s+{regexType}.*?r\$\s*([\d.,]+)",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+        return match.Success
+            ? Convert.ToDouble(match.Groups[1].Value, new CultureInfo("pt-BR"))
+            : null;
+    }
+
+    private static double? GetValueFromText(string text, string type)
+    {
+        string regexType = type.ToLower().Equals("purchase") ? "comprado" : "vendido";
+        var match = Regex.Match( text, 
+            @$"valor\s+{regexType}.*?r\$\s*([\d.,]+)", 
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+        return match.Success
+            ? Convert.ToDouble(match.Groups[1].Value, new CultureInfo("pt-BR"))
+            : null;
+    }
+
+    private static double? GetTaxFromText(string text)
+    {
+        var match = Regex.Match( text, 
+            @"taxa\s+da\s+transação.*?r\$\s*([\d.,]+)", 
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+        return match.Success
+            ? Convert.ToDouble(match.Groups[1].Value, new CultureInfo("pt-BR"))
+            : null;
+    }
+
+    private static DateTime? GetDateFromText(string text)
+    {
+        var match = Regex.Match(text, @"\b(\d{2}/\d{2}/\d{4})\b");
+
+        return match.Success
+            ? DateTime.ParseExact( match.Groups[1].Value, "dd/MM/yyyy", CultureInfo.InvariantCulture)
+            : null;
+    }
+
+    #endregion
 }
